@@ -4,7 +4,7 @@
 #
 Name     : rsync
 Version  : 3.1.2
-Release  : 17
+Release  : 18
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.2.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.2.tar.gz
 Source1  : rsyncd.service
