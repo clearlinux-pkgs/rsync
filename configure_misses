@@ -1,0 +1,42 @@
+Configure miss: the group for user "nobody"
+Configure miss: broken largefile support
+Configure miss: whether to call shutdown on all sockets
+Configure miss: compat.h usability
+Configure miss: compat.h presence
+Configure miss: compat.h
+Configure miss: sys/mode.h usability
+Configure miss: sys/mode.h presence
+Configure miss: sys/mode.h
+Configure miss: sys/attr.h usability
+Configure miss: sys/attr.h presence
+Configure miss: sys/attr.h
+Configure miss: libcharset.h usability
+Configure miss: libcharset.h presence
+Configure miss: libcharset.h
+Configure miss: sys/extattr.h usability
+Configure miss: sys/extattr.h presence
+Configure miss: sys/extattr.h
+Configure miss: popt/popt.h usability
+Configure miss: popt/popt.h presence
+Configure miss: popt/popt.h
+Configure miss: if makedev takes 3 args
+Configure miss: struct stat.st_mtimensec
+Configure miss: struct stat.st_mtimespec.tv_nsec
+Configure miss: library containing libiconv_open
+Configure miss: aclsort
+Configure miss: aclsort in -lsec
+Configure miss: va_copy
+Configure miss: __va_copy
+Configure miss: locale_charset
+Configure miss: extattr_get_link
+Configure miss: setattrlist
+Configure miss: attropen
+Configure miss: whether posix_fallocate is efficient
+Configure miss: whether chown() modifies symlinks
+Configure miss: whether to use included libpopt
+Configure miss: broken readdir
+Configure miss: _acl
+Configure miss: __acl
+Configure miss: _facl
+Configure miss: __facl
+Configure miss: acl_get_perm_np

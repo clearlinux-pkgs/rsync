@@ -1,0 +1,3583 @@
+diff --git a/Makefile.in b/Makefile.in
+index 151247db..f912f312 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -98,7 +98,7 @@ $(CHECK_OBJS): $(HEADERS)
+ 
+ flist.o: rounding.h
+ 
+-rounding.h: rounding.c rsync.h
++rounding.h: rounding.c rsync.h proto.h
+ 	@for r in 0 1 3; do \
+ 	    if $(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o rounding -DEXTRA_ROUNDING=$$r -I. $(srcdir)/rounding.c >rounding.out 2>&1; then \
+ 		echo "#define EXTRA_ROUNDING $$r" >rounding.h; \
+@@ -215,8 +215,8 @@ proto.h-tstamp: $(srcdir)/*.c $(srcdir)/lib/compat.c config.h
+ man: rsync.1 rsyncd.conf.5 man-copy
+ 
+ man-copy:
+-	@-if test -f rsync.1; then :; else echo 'Copying srcdir rsync.1'; cp -p $(srcdir)/rsync.1 .; fi
+-	@-if test -f rsyncd.conf.5; then :; else echo 'Copying srcdir rsyncd.conf.5'; cp -p $(srcdir)/rsyncd.conf.5 .; fi
++	@if test -f rsync.1; then :; elif test -f $(srcdir)/rsync.1; then echo 'Copying srcdir rsync.1'; cp -p $(srcdir)/rsync.1 .; else echo "NOTE: rsync.1 cannot be created."; fi
++	@if test -f rsyncd.conf.5; then :; elif test -f $(srcdir)/rsyncd.conf.5; then echo 'Copying srcdir rsyncd.conf.5'; cp -p $(srcdir)/rsyncd.conf.5 .; else echo "NOTE: rsyncd.conf.5 cannot be created."; fi
+ 
+ rsync.1: rsync.yo
+ 	yodl2man -o rsync.1 $(srcdir)/rsync.yo
+diff --git a/NEWS b/NEWS
+index 2de8d122..67047d2d 100644
+--- a/NEWS
++++ b/NEWS
+@@ -1,47 +1,24 @@
+-NEWS for rsync 3.1.2 (21 Dec 2015)
++NEWS for rsync 3.1.3 (UNRELEASED)
+ Protocol: 31 (unchanged)
+-Changes since 3.1.1:
+-
+-  SECURITY FIXES:
+-
+-    - Make sure that all transferred files use only path names from inside the
+-      transfer.  This makes it impossible for a malicious sender to try to make
+-      the receiver use an unsafe destination path for a transferred file, such
+-      as a just-sent symlink.
++Changes since 3.1.2:
+ 
+   BUG FIXES:
+ 
+-    - Change the checksum seed order in the per-block checksums.  This prevents
+-      someone from trying to create checksum blocks that match in sum but not
+-      content.
+-    - Fixed a with the per-dir filter files (using -FF) that could trigger an
+-      assert failure.
+-    - Only skip set_modtime() on a transferred file if the time is exactly
+-      right.
+-    - Don't create an empty backup dir for a transferred file that doesn't
+-      exist yet.
+-    - Fixed a bug where --link-dest and --xattrs could cause rsync to exit if
+-      a filename had a matching dir of the same name in the alt-dest area.
+-    - Allow more than 32 group IDs per user in the daemon's gid=LIST config.
+-    - Fix the logging of %b & %c via --log-file (daemon logging was already
+-      correct, as was --out-format='%b/%c').
+-    - Fix erroneous acceptance of --info=5 & --debug=5 (an empty flag name is
+-      not valid).
++    - Don't output about a new backup dir with appropriate info verbosity.
++    - Fixed some issues with the sort functions in support/rsyncstats.
++    - Added a way to specify group names that contain spaces in daemon config.
++    - If a backup fails (e.g. full disk) rsync exits with an error.
++    - Avoid invalid output in the summary if either the start or end time had
++      an error.
+ 
+   ENHANCEMENTS:
+ 
+-    - Added "(DRY RUN)" info to the --debug=exit output line.
+-    - Use usleep() for our msleep() function if it is available.
+-    - Added a few extra long-option names to rrsync script, which will make
+-      BackupPC happier.
+-    - Made configure choose to use linux xattrs on netbsd (rather than not
+-      supporting xattrs).
+-    - Added -wo (write-only) option to rrsync support script.
+-    - Misc. manpage tweaks.
++    - Added the ability for rsync to compare nanosecond times in its file-check
++      comparisons.  Also added a short-option (-@) for --modify-window.
++    - Added the --checksum-choice=NAME[,NAME] option to choose the checksum
++      algorithms.
+ 
+   DEVELOPER RELATED:
+ 
+-    - Fixed a bug with the Makefile's use of INSTALL_STRIP.
+-    - Improve a test in the suite that could get an erroneous timestamp error.
+-    - Tweaks for newer versions of git in the packaging tools.
+-    - Improved the m4 generation rules and some autoconf idioms.
++    - Tweak the "make" output when yodl isn't around to create the man pages.
++    - Changed an obsolete compile macro in configure.
+diff --git a/OLDNEWS b/OLDNEWS
+index a5559501..484bda07 100644
+--- a/OLDNEWS
++++ b/OLDNEWS
+@@ -1,3 +1,51 @@
++NEWS for rsync 3.1.2 (21 Dec 2015)
++Protocol: 31 (unchanged)
++Changes since 3.1.1:
++
++  SECURITY FIXES:
++
++    - Make sure that all transferred files use only path names from inside the
++      transfer.  This makes it impossible for a malicious sender to try to make
++      the receiver use an unsafe destination path for a transferred file, such
++      as a just-sent symlink.
++
++  BUG FIXES:
++
++    - Change the checksum seed order in the per-block checksums.  This prevents
++      someone from trying to create checksum blocks that match in sum but not
++      content.
++    - Fixed a with the per-dir filter files (using -FF) that could trigger an
++      assert failure.
++    - Only skip set_modtime() on a transferred file if the time is exactly
++      right.
++    - Don't create an empty backup dir for a transferred file that doesn't
++      exist yet.
++    - Fixed a bug where --link-dest and --xattrs could cause rsync to exit if
++      a filename had a matching dir of the same name in the alt-dest area.
++    - Allow more than 32 group IDs per user in the daemon's gid=LIST config.
++    - Fix the logging of %b & %c via --log-file (daemon logging was already
++      correct, as was --out-format='%b/%c').
++    - Fix erroneous acceptance of --info=5 & --debug=5 (an empty flag name is
++      not valid).
++
++  ENHANCEMENTS:
++
++    - Added "(DRY RUN)" info to the --debug=exit output line.
++    - Use usleep() for our msleep() function if it is available.
++    - Added a few extra long-option names to rrsync script, which will make
++      BackupPC happier.
++    - Made configure choose to use linux xattrs on netbsd (rather than not
++      supporting xattrs).
++    - Added -wo (write-only) option to rrsync support script.
++    - Misc. manpage tweaks.
++
++  DEVELOPER RELATED:
++
++    - Fixed a bug with the Makefile's use of INSTALL_STRIP.
++    - Improve a test in the suite that could get an erroneous timestamp error.
++    - Tweaks for newer versions of git in the packaging tools.
++    - Improved the m4 generation rules and some autoconf idioms.
++
+ NEWS for rsync 3.1.1 (22 Jun 2014)
+ Protocol: 31 (unchanged)
+ Changes since 3.1.0:
+diff --git a/authenticate.c b/authenticate.c
+index 5f125dea..d60ee20b 100644
+--- a/authenticate.c
++++ b/authenticate.c
+@@ -71,7 +71,7 @@ static void gen_challenge(const char *addr, char *challenge)
+ 	SIVAL(input, 20, tv.tv_usec);
+ 	SIVAL(input, 24, getpid());
+ 
+-	sum_init(0);
++	sum_init(-1, 0);
+ 	sum_update(input, sizeof input);
+ 	len = sum_end(digest);
+ 
+@@ -85,7 +85,7 @@ static void generate_hash(const char *in, const char *challenge, char *out)
+ 	char buf[MAX_DIGEST_LEN];
+ 	int len;
+ 
+-	sum_init(0);
++	sum_init(-1, 0);
+ 	sum_update(in, strlen(in));
+ 	sum_update(challenge, strlen(challenge));
+ 	len = sum_end(buf);
+diff --git a/checksum.c b/checksum.c
+index 6ebb56bb..8b388336 100644
+--- a/checksum.c
++++ b/checksum.c
+@@ -24,6 +24,76 @@
+ extern int checksum_seed;
+ extern int protocol_version;
+ extern int proper_seed_order;
++extern char *checksum_choice;
++
++#define CSUM_NONE 0
++#define CSUM_ARCHAIC 1
++#define CSUM_MD4_BUSTED 2
++#define CSUM_MD4_OLD 3
++#define CSUM_MD4 4
++#define CSUM_MD5 5
++
++int xfersum_type = 0; /* used for the file transfer checksums */
++int checksum_type = 0; /* used for the pre-transfer (--checksum) checksums */
++
++/* Returns 1 if --whole-file must be enabled. */
++int parse_checksum_choice(void)
++{
++	char *cp = checksum_choice ? strchr(checksum_choice, ',') : NULL;
++	if (cp) {
++		xfersum_type = parse_csum_name(checksum_choice, cp - checksum_choice);
++		checksum_type = parse_csum_name(cp+1, -1);
++	} else
++		xfersum_type = checksum_type = parse_csum_name(checksum_choice, -1);
++	return xfersum_type == CSUM_NONE;
++}
++
++int parse_csum_name(const char *name, int len)
++{
++	if (len < 0 && name)
++		len = strlen(name);
++
++	if (!name || (len == 4 && strncasecmp(name, "auto", 4) == 0)) {
++		if (protocol_version >= 30)
++			return CSUM_MD5;
++		if (protocol_version >= 27)
++			return CSUM_MD4_OLD;
++		if (protocol_version >= 21)
++			return CSUM_MD4_BUSTED;
++		return CSUM_ARCHAIC;
++	}
++	if (len == 3 && strncasecmp(name, "md4", 3) == 0)
++		return CSUM_MD4;
++	if (len == 3 && strncasecmp(name, "md5", 3) == 0)
++		return CSUM_MD5;
++	if (len == 4 && strncasecmp(name, "none", 4) == 0)
++		return CSUM_NONE;
++
++	rprintf(FERROR, "unknown checksum name: %s\n", name);
++	exit_cleanup(RERR_UNSUPPORTED);
++}
++
++int csum_len_for_type(int cst)
++{
++	switch (cst) {
++	  case CSUM_NONE:
++		return 1;
++	  case CSUM_ARCHAIC:
++		return 2;
++	  case CSUM_MD4:
++	  case CSUM_MD4_OLD:
++	  case CSUM_MD4_BUSTED:
++		return MD4_DIGEST_LEN;
++	  case CSUM_MD5:
++		return MD5_DIGEST_LEN;
++	}
++	return 0;
++}
++
++int canonical_checksum(int csum_type)
++{
++    return csum_type >= CSUM_MD4 ? 1 : 0;
++}
+ 
+ /*
+   a simple 32 bit checksum that can be upadted from either end
+@@ -47,12 +117,12 @@ uint32 get_checksum1(char *buf1, int32 len)
+     return (s1 & 0xffff) + (s2 << 16);
+ }
+ 
+-
+ void get_checksum2(char *buf, int32 len, char *sum)
+ {
+ 	md_context m;
+ 
+-	if (protocol_version >= 30) {
++	switch (xfersum_type) {
++	  case CSUM_MD5: {
+ 		uchar seedbuf[4];
+ 		md5_begin(&m);
+ 		if (proper_seed_order) {
+@@ -69,7 +139,11 @@ void get_checksum2(char *buf, int32 len, char *sum)
+ 			}
+ 		}
+ 		md5_result(&m, (uchar *)sum);
+-	} else {
++		break;
++	  }
++	  case CSUM_MD4:
++	  case CSUM_MD4_OLD:
++	  case CSUM_MD4_BUSTED: {
+ 		int32 i;
+ 		static char *buf1;
+ 		static int32 len1;
+@@ -100,10 +174,12 @@ void get_checksum2(char *buf, int32 len, char *sum)
+ 		 * are multiples of 64.  This is fixed by calling mdfour_update()
+ 		 * even when there are no more bytes.
+ 		 */
+-		if (len - i > 0 || protocol_version >= 27)
++		if (len - i > 0 || xfersum_type != CSUM_MD4_BUSTED)
+ 			mdfour_update(&m, (uchar *)(buf1+i), len-i);
+ 
+ 		mdfour_result(&m, (uchar *)sum);
++		break;
++	  }
+ 	}
+ }
+ 
+@@ -123,7 +199,8 @@ void file_checksum(const char *fname, const STRUCT_STAT *st_p, char *sum)
+ 
+ 	buf = map_file(fd, len, MAX_MAP_SIZE, CSUM_CHUNK);
+ 
+-	if (protocol_version >= 30) {
++	switch (checksum_type) {
++	  case CSUM_MD5:
+ 		md5_begin(&m);
+ 
+ 		for (i = 0; i + CSUM_CHUNK <= len; i += CSUM_CHUNK) {
+@@ -136,7 +213,10 @@ void file_checksum(const char *fname, const STRUCT_STAT *st_p, char *sum)
+ 			md5_update(&m, (uchar *)map_ptr(buf, i, remainder), remainder);
+ 
+ 		md5_result(&m, (uchar *)sum);
+-	} else {
++		break;
++	  case CSUM_MD4:
++	  case CSUM_MD4_OLD:
++	  case CSUM_MD4_BUSTED:
+ 		mdfour_begin(&m);
+ 
+ 		for (i = 0; i + CSUM_CHUNK <= len; i += CSUM_CHUNK) {
+@@ -149,10 +229,14 @@ void file_checksum(const char *fname, const STRUCT_STAT *st_p, char *sum)
+ 		 * are multiples of 64.  This is fixed by calling mdfour_update()
+ 		 * even when there are no more bytes. */
+ 		remainder = (int32)(len - i);
+-		if (remainder > 0 || protocol_version >= 27)
++		if (remainder > 0 || checksum_type != CSUM_MD4_BUSTED)
+ 			mdfour_update(&m, (uchar *)map_ptr(buf, i, remainder), remainder);
+ 
+ 		mdfour_result(&m, (uchar *)sum);
++		break;
++	  default:
++		rprintf(FERROR, "invalid checksum-choice for the --checksum option (%d)\n", checksum_type);
++		exit_cleanup(RERR_UNSUPPORTED);
+ 	}
+ 
+ 	close(fd);
+@@ -161,18 +245,33 @@ void file_checksum(const char *fname, const STRUCT_STAT *st_p, char *sum)
+ 
+ static int32 sumresidue;
+ static md_context md;
++static int cursum_type;
+ 
+-void sum_init(int seed)
++void sum_init(int csum_type, int seed)
+ {
+ 	char s[4];
+ 
+-	if (protocol_version >= 30)
++	if (csum_type < 0)
++		csum_type = parse_csum_name(NULL, 0);
++	cursum_type = csum_type;
++
++	switch (csum_type) {
++	  case CSUM_MD5:
+ 		md5_begin(&md);
+-	else {
++		break;
++	  case CSUM_MD4:
++		mdfour_begin(&md);
++		sumresidue = 0;
++		break;
++	  case CSUM_MD4_OLD:
++	  case CSUM_MD4_BUSTED:
+ 		mdfour_begin(&md);
+ 		sumresidue = 0;
+ 		SIVAL(s, 0, seed);
+ 		sum_update(s, 4);
++		break;
++	  case CSUM_NONE:
++		break;
+ 	}
+ }
+ 
+@@ -186,47 +285,62 @@ void sum_init(int seed)
+  **/
+ void sum_update(const char *p, int32 len)
+ {
+-	if (protocol_version >= 30) {
++	switch (cursum_type) {
++	  case CSUM_MD5:
+ 		md5_update(&md, (uchar *)p, len);
+-		return;
+-	}
++		break;
++	  case CSUM_MD4:
++	  case CSUM_MD4_OLD:
++	  case CSUM_MD4_BUSTED:
++		if (len + sumresidue < CSUM_CHUNK) {
++			memcpy(md.buffer + sumresidue, p, len);
++			sumresidue += len;
++			break;
++		}
+ 
+-	if (len + sumresidue < CSUM_CHUNK) {
+-		memcpy(md.buffer + sumresidue, p, len);
+-		sumresidue += len;
+-		return;
+-	}
++		if (sumresidue) {
++			int32 i = CSUM_CHUNK - sumresidue;
++			memcpy(md.buffer + sumresidue, p, i);
++			mdfour_update(&md, (uchar *)md.buffer, CSUM_CHUNK);
++			len -= i;
++			p += i;
++		}
+ 
+-	if (sumresidue) {
+-		int32 i = CSUM_CHUNK - sumresidue;
+-		memcpy(md.buffer + sumresidue, p, i);
+-		mdfour_update(&md, (uchar *)md.buffer, CSUM_CHUNK);
+-		len -= i;
+-		p += i;
+-	}
++		while (len >= CSUM_CHUNK) {
++			mdfour_update(&md, (uchar *)p, CSUM_CHUNK);
++			len -= CSUM_CHUNK;
++			p += CSUM_CHUNK;
++		}
+ 
+-	while (len >= CSUM_CHUNK) {
+-		mdfour_update(&md, (uchar *)p, CSUM_CHUNK);
+-		len -= CSUM_CHUNK;
+-		p += CSUM_CHUNK;
++		sumresidue = len;
++		if (sumresidue)
++			memcpy(md.buffer, p, sumresidue);
++		break;
++	  case CSUM_NONE:
++		break;
+ 	}
+-
+-	sumresidue = len;
+-	if (sumresidue)
+-		memcpy(md.buffer, p, sumresidue);
+ }
+ 
+ int sum_end(char *sum)
+ {
+-	if (protocol_version >= 30) {
++	switch (cursum_type) {
++	  case CSUM_MD5:
+ 		md5_result(&md, (uchar *)sum);
+-		return MD5_DIGEST_LEN;
+-	}
+-
+-	if (sumresidue || protocol_version >= 27)
++		break;
++	  case CSUM_MD4:
++	  case CSUM_MD4_OLD:
+ 		mdfour_update(&md, (uchar *)md.buffer, sumresidue);
++		mdfour_result(&md, (uchar *)sum);
++		break;
++	  case CSUM_MD4_BUSTED:
++		if (sumresidue)
++			mdfour_update(&md, (uchar *)md.buffer, sumresidue);
++		mdfour_result(&md, (uchar *)sum);
++		break;
++	  case CSUM_NONE:
++		*sum = '\0';
++		break;
++	}
+ 
+-	mdfour_result(&md, (uchar *)sum);
+-
+-	return MD4_DIGEST_LEN;
++	return csum_len_for_type(cursum_type);
+ }
+diff --git a/clientserver.c b/clientserver.c
+index 27f8cd38..4b84b823 100644
+--- a/clientserver.c
++++ b/clientserver.c
+@@ -59,6 +59,8 @@ extern filter_rule_list daemon_filter_list;
+ extern char *iconv_opt;
+ extern iconv_t ic_send, ic_recv;
+ #endif
++extern uid_t our_uid;
++extern gid_t our_gid;
+ 
+ char *auth_user;
+ int read_only = 0;
+@@ -426,7 +428,7 @@ static int read_arg_from_pipe(int fd, char *buf, int limit)
+ static int path_failure(int f_out, const char *dir, BOOL was_chdir)
+ {
+ 	if (was_chdir)
+-		rsyserr(FLOG, errno, "chdir %s failed\n", dir);
++		rsyserr(FLOG, errno, "chdir %s failed", dir);
+ 	else
+ 		rprintf(FLOG, "normalize_path(%s) failed\n", dir);
+ 	io_printf(f_out, "@ERROR: chdir failed\n");
+@@ -592,7 +594,7 @@ static int rsync_module(int f_in, int f_out, int i, const char *addr, const char
+ 	} else
+ 		set_uid = 0;
+ 
+-	p = *lp_gid(i) ? strtok(lp_gid(i), ", ") : NULL;
++	p = *lp_gid(i) ? conf_strtok(lp_gid(i)) : NULL;
+ 	if (p) {
+ 		/* The "*" gid must be the first item in the list. */
+ 		if (strcmp(p, "*") == 0) {
+@@ -609,7 +611,7 @@ static int rsync_module(int f_in, int f_out, int i, const char *addr, const char
+ #endif
+ 		} else if (add_a_group(f_out, p) < 0)
+ 			return -1;
+-		while ((p = strtok(NULL, ", ")) != NULL) {
++		while ((p = conf_strtok(NULL)) != NULL) {
+ #if defined HAVE_INITGROUPS && !defined HAVE_GETGROUPLIST
+ 			if (pw) {
+ 				rprintf(FLOG, "This rsync cannot add groups after \"*\".\n");
+@@ -794,7 +796,7 @@ static int rsync_module(int f_in, int f_out, int i, const char *addr, const char
+ 
+ 	if (!change_dir(module_chdir, CD_NORMAL))
+ 		return path_failure(f_out, module_chdir, True);
+-	if (module_dirlen || !use_chroot)
++	if (module_dirlen || (!use_chroot && !*lp_daemon_chroot()))
+ 		sanitize_paths = 1;
+ 
+ 	if ((munge_symlinks = lp_munge_symlinks(i)) < 0)
+@@ -834,6 +836,7 @@ static int rsync_module(int f_in, int f_out, int i, const char *addr, const char
+ 			return -1;
+ 		}
+ #endif
++		our_gid = MY_GID();
+ 	}
+ 
+ 	if (set_uid) {
+@@ -847,7 +850,8 @@ static int rsync_module(int f_in, int f_out, int i, const char *addr, const char
+ 			return -1;
+ 		}
+ 
+-		am_root = (MY_UID() == 0);
++		our_uid = MY_UID();
++		am_root = (our_uid == 0);
+ 	}
+ 
+ 	if (lp_temp_dir(i) && *lp_temp_dir(i)) {
+@@ -1039,6 +1043,7 @@ int start_daemon(int f_in, int f_out)
+ {
+ 	char line[1024];
+ 	const char *addr, *host;
++	char *p;
+ 	int i;
+ 
+ 	io_set_sock_fds(f_in, f_out);
+@@ -1050,6 +1055,42 @@ int start_daemon(int f_in, int f_out)
+ 	if (!load_config(0))
+ 		exit_cleanup(RERR_SYNTAX);
+ 
++	p = lp_daemon_chroot();
++	if (*p) {
++		log_init(0); /* Make use we've initialized syslog before chrooting. */
++		if (chroot(p) < 0 || chdir("/") < 0) {
++			rsyserr(FLOG, errno, "daemon chroot %s failed", p);
++			return -1;
++		}
++	}
++	p = lp_daemon_gid();
++	if (*p) {
++		gid_t gid;
++		if (!group_to_gid(p, &gid, True)) {
++			rprintf(FLOG, "Invalid daemon gid: %s\n", p);
++			return -1;
++		}
++		if (setgid(gid) < 0) {
++			rsyserr(FLOG, errno, "Unable to set group to daemon gid %ld", (long)gid);
++			return -1;
++		}
++		our_gid = MY_GID();
++	}
++	p = lp_daemon_uid();
++	if (*p) {
++		uid_t uid;
++		if (!user_to_uid(p, &uid, True)) {
++			rprintf(FLOG, "Invalid daemon uid: %s\n", p);
++			return -1;
++		}
++		if (setuid(uid) < 0) {
++			rsyserr(FLOG, errno, "Unable to set user to daemon uid %ld", (long)uid);
++			return -1;
++		}
++		our_uid = MY_UID();
++		am_root = (our_uid == 0);
++	}
++
+ 	addr = client_addr(f_in);
+ 	host = lp_reverse_lookup(-1) ? client_name(f_in) : undetermined_hostname;
+ 	rprintf(FLOG, "connect from %s (%s)\n", host, addr);
+diff --git a/compat.c b/compat.c
+index c792312b..505cb7ff 100644
+--- a/compat.c
++++ b/compat.c
+@@ -338,4 +338,6 @@ void setup_protocol(int f_out,int f_in)
+ 	} else {
+ 		checksum_seed = read_int(f_in);
+ 	}
++
++	init_flist();
+ }
+diff --git a/configure.ac b/configure.ac
+index 1b32dfbb..02d4cb84 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,6 +1,6 @@
+ dnl Process this file with autoconf to produce a configure script.
+ 
+-AC_INIT([rsync],[3.1.2],[http://rsync.samba.org/bugzilla.html])
++AC_INIT([rsync],[3.1.3dev],[http://rsync.samba.org/bugzilla.html])
+ 
+ AC_CONFIG_MACRO_DIR([m4])
+ AC_CONFIG_SRCDIR([byteorder.h])
+@@ -400,6 +400,7 @@ AC_CHECK_TYPES([mode_t,off_t,size_t,pid_t,id_t])
+ AC_TYPE_GETGROUPS
+ AC_CHECK_MEMBERS([struct stat.st_rdev,
+ 		  struct stat.st_mtimensec,
++		  struct stat.st_mtimespec.tv_nsec,
+ 		  struct stat.st_mtim.tv_nsec],,,[
+ #ifdef HAVE_SYS_TYPES_H
+ #include <sys/types.h>
+@@ -614,6 +615,36 @@ if test x"$rsync_cv_have_fallocate" = x"yes"; then
+     AC_DEFINE(HAVE_FALLOCATE, 1, [Define to 1 if you have the fallocate function and it compiles and links without error])
+ fi
+ 
++AC_MSG_CHECKING([for FALLOC_FL_PUNCH_HOLE])
++AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
++        #define _GNU_SOURCE 1
++        #include <linux/falloc.h>
++        #ifndef FALLOC_FL_PUNCH_HOLE
++        #error FALLOC_FL_PUNCH_HOLE is missing
++        #endif
++    ]])], [
++        AC_MSG_RESULT([yes])
++        AC_DEFINE([HAVE_FALLOC_FL_PUNCH_HOLE], [1], [Define if FALLOC_FL_PUNCH_HOLE is available.])
++    ], [
++        AC_MSG_RESULT([no])
++    ]
++)
++
++AC_MSG_CHECKING([for FALLOC_FL_ZERO_RANGE])
++AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
++        #define _GNU_SOURCE 1
++        #include <linux/falloc.h>
++        #ifndef FALLOC_FL_ZERO_RANGE
++        #error FALLOC_FL_ZERO_RANGE is missing
++        #endif
++    ]])], [
++        AC_MSG_RESULT([yes])
++        AC_DEFINE([HAVE_FALLOC_FL_ZERO_RANGE], [1], [Define if FALLOC_FL_ZERO_RANGE is available.])
++    ], [
++        AC_MSG_RESULT([no])
++    ]
++)
++
+ AC_CACHE_CHECK([for SYS_fallocate],rsync_cv_have_sys_fallocate,[
+ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/syscall.h>
+ #include <sys/types.h>]], [[syscall(SYS_fallocate, 0, 0, (loff_t)0, (loff_t)0);]])],[rsync_cv_have_sys_fallocate=yes],[rsync_cv_have_sys_fallocate=no])])
+diff --git a/exclude.c b/exclude.c
+index 0aaa19b1..00988a75 100644
+--- a/exclude.c
++++ b/exclude.c
+@@ -44,6 +44,8 @@ filter_rule_list filter_list = { .debug_type = "" };
+ filter_rule_list cvs_filter_list = { .debug_type = " [global CVS]" };
+ filter_rule_list daemon_filter_list = { .debug_type = " [daemon]" };
+ 
++int saw_xattr_filter = 0;
++
+ /* Need room enough for ":MODS " prefix plus some room to grow. */
+ #define MAX_RULE_PREFIX (16)
+ 
+@@ -622,7 +624,7 @@ void change_local_filter_dir(const char *dname, int dlen, int dir_depth)
+ 	filt_array[cur_depth] = push_local_filters(dname, dlen);
+ }
+ 
+-static int rule_matches(const char *fname, filter_rule *ex, int name_is_dir)
++static int rule_matches(const char *fname, filter_rule *ex, int name_flags)
+ {
+ 	int slash_handling, str_cnt = 0, anchored_match = 0;
+ 	int ret_match = ex->rflags & FILTRULE_NEGATE ? 0 : 1;
+@@ -633,6 +635,9 @@ static int rule_matches(const char *fname, filter_rule *ex, int name_is_dir)
+ 	if (!*name)
+ 		return 0;
+ 
++	if (!(name_flags & NAME_IS_XATTR) ^ !(ex->rflags & FILTRULE_XATTR))
++		return 0;
++
+ 	if (!ex->u.slash_cnt && !(ex->rflags & FILTRULE_WILD2)) {
+ 		/* If the pattern does not have any slashes AND it does
+ 		 * not have a "**" (which could match a slash), then we
+@@ -650,7 +655,7 @@ static int rule_matches(const char *fname, filter_rule *ex, int name_is_dir)
+ 		strings[str_cnt++] = "/";
+ 	}
+ 	strings[str_cnt++] = name;
+-	if (name_is_dir) {
++	if (name_flags & NAME_IS_DIR) {
+ 		/* Allow a trailing "/"+"***" to match the directory. */
+ 		if (ex->rflags & FILTRULE_WILD3_SUFFIX)
+ 			strings[str_cnt++] = "/";
+@@ -702,7 +707,7 @@ static int rule_matches(const char *fname, filter_rule *ex, int name_is_dir)
+ 
+ static void report_filter_result(enum logcode code, char const *name,
+ 				 filter_rule const *ent,
+-				 int name_is_dir, const char *type)
++				 int name_flags, const char *type)
+ {
+ 	/* If a trailing slash is present to match only directories,
+ 	 * then it is stripped out by add_rule().  So as a special
+@@ -712,17 +717,40 @@ static void report_filter_result(enum logcode code, char const *name,
+ 		static char *actions[2][2]
+ 		    = { {"show", "hid"}, {"risk", "protect"} };
+ 		const char *w = who_am_i();
++		const char *t = name_flags & NAME_IS_XATTR ? "xattr"
++			      : name_flags & NAME_IS_DIR ? "directory"
++			      : "file";
+ 		rprintf(code, "[%s] %sing %s %s because of pattern %s%s%s\n",
+ 		    w, actions[*w!='s'][!(ent->rflags & FILTRULE_INCLUDE)],
+-		    name_is_dir ? "directory" : "file", name, ent->pattern,
++		    t, name, ent->pattern,
+ 		    ent->rflags & FILTRULE_DIRECTORY ? "/" : "", type);
+ 	}
+ }
+ 
++/* This function is used to check if a file should be included/excluded
++ * from the list of files based on its name and type etc.  The value of
++ * filter_level is set to either SERVER_FILTERS or ALL_FILTERS. */
++int name_is_excluded(const char *fname, int name_flags, int filter_level)
++{
++	if (daemon_filter_list.head && check_filter(&daemon_filter_list, FLOG, fname, name_flags) < 0) {
++		if (!(name_flags & NAME_IS_XATTR))
++			errno = ENOENT;
++		return 1;
++	}
++
++	if (filter_level != ALL_FILTERS)
++		return 0;
++
++	if (filter_list.head && check_filter(&filter_list, FINFO, fname, name_flags) < 0)
++		return 1;
++
++	return 0;
++}
++
+ /* Return -1 if file "name" is defined to be excluded by the specified
+  * exclude list, 1 if it is included, and 0 if it was not matched. */
+ int check_filter(filter_rule_list *listp, enum logcode code,
+-		 const char *name, int name_is_dir)
++		 const char *name, int name_flags)
+ {
+ 	filter_rule *ent;
+ 
+@@ -730,22 +758,19 @@ int check_filter(filter_rule_list *listp, enum logcode code,
+ 		if (ignore_perishable && ent->rflags & FILTRULE_PERISHABLE)
+ 			continue;
+ 		if (ent->rflags & FILTRULE_PERDIR_MERGE) {
+-			int rc = check_filter(ent->u.mergelist, code, name,
+-					      name_is_dir);
++			int rc = check_filter(ent->u.mergelist, code, name, name_flags);
+ 			if (rc)
+ 				return rc;
+ 			continue;
+ 		}
+ 		if (ent->rflags & FILTRULE_CVS_IGNORE) {
+-			int rc = check_filter(&cvs_filter_list, code, name,
+-					      name_is_dir);
++			int rc = check_filter(&cvs_filter_list, code, name, name_flags);
+ 			if (rc)
+ 				return rc;
+ 			continue;
+ 		}
+-		if (rule_matches(name, ent, name_is_dir)) {
+-			report_filter_result(code, name, ent, name_is_dir,
+-					     listp->debug_type);
++		if (rule_matches(name, ent, name_flags)) {
++			report_filter_result(code, name, ent, name_flags, listp->debug_type);
+ 			return ent->rflags & FILTRULE_INCLUDE ? 1 : -1;
+ 		}
+ 	}
+@@ -970,6 +995,10 @@ static filter_rule *parse_rule_tok(const char **rulestr_ptr,
+ 					goto invalid;
+ 				rule->rflags |= FILTRULE_WORD_SPLIT;
+ 				break;
++			case 'x':
++				rule->rflags |= FILTRULE_XATTR;
++				saw_xattr_filter = 1;
++				break;
+ 			}
+ 		}
+ 		if (*s)
+diff --git a/fileio.c b/fileio.c
+index 70e079d5..1e8a562c 100644
+--- a/fileio.c
++++ b/fileio.c
+@@ -35,7 +35,10 @@
+ 
+ extern int sparse_files;
+ 
++OFF_T preallocated_len = 0;
++
+ static OFF_T sparse_seek = 0;
++static OFF_T sparse_past_write = 0;
+ 
+ int sparse_end(int f, OFF_T size)
+ {
+@@ -63,8 +66,10 @@ int sparse_end(int f, OFF_T size)
+ 	return ret;
+ }
+ 
+-
+-static int write_sparse(int f, char *buf, int len)
++/* Note that the offset is just the caller letting us know where
++ * the current file position is in the file. The use_seek arg tells
++ * us that we should seek over matching data instead of writing it. */
++static int write_sparse(int f, int use_seek, OFF_T offset, const char *buf, int len)
+ {
+ 	int l1 = 0, l2 = 0;
+ 	int ret;
+@@ -77,9 +82,24 @@ static int write_sparse(int f, char *buf, int len)
+ 	if (l1 == len)
+ 		return len;
+ 
+-	if (sparse_seek)
+-		do_lseek(f, sparse_seek, SEEK_CUR);
++	if (sparse_seek) {
++		if (sparse_past_write >= preallocated_len) {
++			if (do_lseek(f, sparse_seek, SEEK_CUR) < 0)
++				return -1;
++		} else if (do_punch_hole(f, sparse_past_write, sparse_seek) < 0) {
++			sparse_seek = 0;
++			return -1;
++		}
++	}
+ 	sparse_seek = l2;
++	sparse_past_write = offset + len - l2;
++
++	if (use_seek) {
++		/* The in-place data already matches. */
++		if (do_lseek(f, len - (l1+l2), SEEK_CUR) < 0)
++			return -1;
++		return len;
++	}
+ 
+ 	while ((ret = write(f, buf + l1, len - (l1+l2))) <= 0) {
+ 		if (ret < 0 && errno == EINTR)
+@@ -96,7 +116,6 @@ static int write_sparse(int f, char *buf, int len)
+ 	return len;
+ }
+ 
+-
+ static char *wf_writeBuf;
+ static size_t wf_writeBufSize;
+ static size_t wf_writeBufCnt;
+@@ -118,12 +137,10 @@ int flush_write_file(int f)
+ 	return ret;
+ }
+ 
+-
+-/*
+- * write_file does not allow incomplete writes.  It loops internally
+- * until len bytes are written or errno is set.
+- */
+-int write_file(int f, char *buf, int len)
++/* write_file does not allow incomplete writes.  It loops internally
++ * until len bytes are written or errno is set.  Note that use_seek and
++ * offset are only used in sparse processing (see write_sparse()). */
++int write_file(int f, int use_seek, OFF_T offset, const char *buf, int len)
+ {
+ 	int ret = 0;
+ 
+@@ -131,7 +148,8 @@ int write_file(int f, char *buf, int len)
+ 		int r1;
+ 		if (sparse_files > 0) {
+ 			int len1 = MIN(len, SPARSE_WRITE_SIZE);
+-			r1 = write_sparse(f, buf, len1);
++			r1 = write_sparse(f, use_seek, offset, buf, len1);
++			offset += r1;
+ 		} else {
+ 			if (!wf_writeBuf) {
+ 				wf_writeBufSize = WRITE_SIZE * 8;
+@@ -164,6 +182,30 @@ int write_file(int f, char *buf, int len)
+ 	return ret;
+ }
+ 
++/* An in-place update found identical data at an identical location. We either
++ * just seek past it, or (for an in-place sparse update), we give the data to
++ * the sparse processor with the use_seek flag set. */
++int skip_matched(int fd, OFF_T offset, const char *buf, int len)
++{
++	OFF_T pos;
++
++	if (sparse_files > 0) {
++		if (write_file(fd, 1, offset, buf, len) != len)
++			return -1;
++		return 0;
++	}
++
++	if (flush_write_file(fd) < 0)
++		return -1;
++
++	if ((pos = do_lseek(fd, len, SEEK_CUR)) != offset + len) {
++		rsyserr(FERROR_XFER, errno, "lseek returned %s, not %s",
++			big_num(pos), big_num(offset));
++		return -1;
++	}
++
++	return 0;
++}
+ 
+ /* This provides functionality somewhat similar to mmap() but using read().
+  * It gives sliding window access to a file.  mmap() is not used because of
+@@ -271,7 +313,6 @@ char *map_ptr(struct map_struct *map, OFF_T offset, int32 len)
+ 	return map->p + align_fudge;
+ }
+ 
+-
+ int unmap_file(struct map_struct *map)
+ {
+ 	int	ret;
+diff --git a/flist.c b/flist.c
+index c1e48b37..24b3506f 100644
+--- a/flist.c
++++ b/flist.c
+@@ -33,9 +33,11 @@ extern int am_sender;
+ extern int am_generator;
+ extern int inc_recurse;
+ extern int always_checksum;
++extern int checksum_type;
+ extern int module_id;
+ extern int ignore_errors;
+ extern int numeric_ids;
++extern int quiet;
+ extern int recurse;
+ extern int use_qsort;
+ extern int xfer_dirs;
+@@ -127,6 +129,7 @@ static char tmp_sum[MAX_DIGEST_LEN];
+ 
+ static char empty_sum[MAX_DIGEST_LEN];
+ static int flist_count_offset; /* for --delete --progress */
++static int show_filelist_progress;
+ 
+ static void flist_sort_and_clean(struct file_list *flist, int strip_root);
+ static void output_flist(struct file_list *flist);
+@@ -137,18 +140,16 @@ void init_flist(void)
+ 		rprintf(FINFO, "FILE_STRUCT_LEN=%d, EXTRA_LEN=%d\n",
+ 			(int)FILE_STRUCT_LEN, (int)EXTRA_LEN);
+ 	}
+-	checksum_len = protocol_version < 21 ? 2
+-		     : protocol_version < 30 ? MD4_DIGEST_LEN
+-		     : MD5_DIGEST_LEN;
+-}
++	parse_checksum_choice(); /* Sets checksum_type && xfersum_type */
++	checksum_len = csum_len_for_type(checksum_type);
+ 
+-static int show_filelist_p(void)
+-{
+-	return INFO_GTE(FLIST, 1) && xfer_dirs && !am_server && !inc_recurse;
++	show_filelist_progress = INFO_GTE(FLIST, 1) && xfer_dirs && !am_server && !inc_recurse;
+ }
+ 
+ static void start_filelist_progress(char *kind)
+ {
++	if (quiet)
++		return;
+ 	rprintf(FCLIENT, "%s ... ", kind);
+ 	output_needs_newline = 1;
+ 	rflush(FINFO);
+@@ -156,23 +157,28 @@ static void start_filelist_progress(char *kind)
+ 
+ static void emit_filelist_progress(int count)
+ {
++	if (quiet)
++		return;
++	if (output_needs_newline == 2) /* avoid a newline in the middle of this filelist-progress output */
++		output_needs_newline = 0;
+ 	rprintf(FCLIENT, " %d files...\r", count);
++	output_needs_newline = 2;
+ }
+ 
+ static void maybe_emit_filelist_progress(int count)
+ {
+-	if (INFO_GTE(FLIST, 2) && show_filelist_p() && (count % 100) == 0)
++	if (INFO_GTE(FLIST, 2) && show_filelist_progress && (count % 100) == 0)
+ 		emit_filelist_progress(count);
+ }
+ 
+ static void finish_filelist_progress(const struct file_list *flist)
+ {
++	output_needs_newline = 0;
+ 	if (INFO_GTE(FLIST, 2)) {
+ 		/* This overwrites the progress line */
+ 		rprintf(FINFO, "%d file%sto consider\n",
+ 			flist->used, flist->used == 1 ? " " : "s ");
+ 	} else {
+-		output_needs_newline = 0;
+ 		rprintf(FINFO, "done\n");
+ 	}
+ }
+@@ -237,16 +243,6 @@ int link_stat(const char *path, STRUCT_STAT *stp, int follow_dirlinks)
+ #endif
+ }
+ 
+-static inline int is_daemon_excluded(const char *fname, int is_dir)
+-{
+-	if (daemon_filter_list.head
+-	 && check_filter(&daemon_filter_list, FLOG, fname, is_dir) < 0) {
+-		errno = ENOENT;
+-		return 1;
+-	}
+-	return 0;
+-}
+-
+ static inline int path_is_daemon_excluded(char *path, int ignore_filename)
+ {
+ 	if (daemon_filter_list.head) {
+@@ -273,23 +269,9 @@ static inline int path_is_daemon_excluded(char *path, int ignore_filename)
+ 	return 0;
+ }
+ 
+-/* This function is used to check if a file should be included/excluded
+- * from the list of files based on its name and type etc.  The value of
+- * filter_level is set to either SERVER_FILTERS or ALL_FILTERS. */
+-static int is_excluded(const char *fname, int is_dir, int filter_level)
++static inline int is_excluded(const char *fname, int is_dir, int filter_level)
+ {
+-#if 0 /* This currently never happens, so avoid a useless compare. */
+-	if (filter_level == NO_FILTERS)
+-		return 0;
+-#endif
+-	if (is_daemon_excluded(fname, is_dir))
+-		return 1;
+-	if (filter_level != ALL_FILTERS)
+-		return 0;
+-	if (filter_list.head
+-	    && check_filter(&filter_list, FINFO, fname, is_dir) < 0)
+-		return 1;
+-	return 0;
++	return name_is_excluded(fname, is_dir ? NAME_IS_DIR : NAME_IS_FILE, filter_level);
+ }
+ 
+ static void send_directory(int f, struct file_list *flist,
+@@ -913,7 +895,7 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+ 	if (file_length > 0xFFFFFFFFu && S_ISREG(mode))
+ 		extra_len += EXTRA_LEN;
+ #endif
+-#ifdef HAVE_UTIMENSAT
++#ifdef CAN_SET_NSEC
+ 	if (modtime_nsec)
+ 		extra_len += EXTRA_LEN;
+ #endif
+@@ -959,7 +941,7 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+ 		file->flags |= FLAG_HLINKED;
+ #endif
+ 	file->modtime = (time_t)modtime;
+-#ifdef HAVE_UTIMENSAT
++#ifdef CAN_SET_NSEC
+ 	if (modtime_nsec) {
+ 		file->flags |= FLAG_MOD_NSEC;
+ 		OPT_EXTRA(file, 0)->unum = modtime_nsec;
+@@ -2087,7 +2069,7 @@ struct file_list *send_file_list(int f, int argc, char *argv[])
+ 	int implied_dot_dir = 0;
+ 
+ 	rprintf(FLOG, "building file list\n");
+-	if (show_filelist_p())
++	if (show_filelist_progress)
+ 		start_filelist_progress("building file list");
+ 	else if (inc_recurse && INFO_GTE(FLIST, 1) && !am_server)
+ 		rprintf(FCLIENT, "sending incremental file list\n");
+@@ -2262,7 +2244,7 @@ struct file_list *send_file_list(int f, int argc, char *argv[])
+ 			memmove(fbuf, fn, len + 1);
+ 
+ 		if (link_stat(fbuf, &st, copy_dirlinks || name_type != NORMAL_NAME) != 0
+-		 || (name_type != DOTDIR_NAME && is_daemon_excluded(fbuf, S_ISDIR(st.st_mode)))
++		 || (name_type != DOTDIR_NAME && is_excluded(fbuf, S_ISDIR(st.st_mode) != 0, SERVER_FILTERS))
+ 		 || (relative_paths && path_is_daemon_excluded(fbuf, 1))) {
+ 			if (errno != ENOENT || missing_args == 0) {
+ 				/* This is a transfer error, but inhibit deletion
+@@ -2361,7 +2343,7 @@ struct file_list *send_file_list(int f, int argc, char *argv[])
+ 		idev_destroy();
+ #endif
+ 
+-	if (show_filelist_p())
++	if (show_filelist_progress)
+ 		finish_filelist_progress(flist);
+ 
+ 	gettimeofday(&end_tv, NULL);
+@@ -2443,7 +2425,7 @@ struct file_list *recv_file_list(int f, int dir_ndx)
+ 	int64 start_read;
+ 
+ 	if (!first_flist) {
+-		if (show_filelist_p())
++		if (show_filelist_progress)
+ 			start_filelist_progress("receiving file list");
+ 		else if (inc_recurse && INFO_GTE(FLIST, 1) && !am_server)
+ 			rprintf(FCLIENT, "receiving incremental file list\n");
+@@ -2539,7 +2521,7 @@ struct file_list *recv_file_list(int f, int dir_ndx)
+ 	if (DEBUG_GTE(FLIST, 2))
+ 		rprintf(FINFO, "received %d names\n", flist->used);
+ 
+-	if (show_filelist_p())
++	if (show_filelist_progress)
+ 		finish_filelist_progress(flist);
+ 
+ 	if (need_unsorted_flist) {
+@@ -2961,8 +2943,7 @@ static void flist_sort_and_clean(struct file_list *flist, int strip_root)
+ 					clear_file(fp);
+ 				}
+ 				prev_depth = F_DEPTH(file);
+-				if (is_excluded(f_name(file, fbuf), 1,
+-						       ALL_FILTERS)) {
++				if (is_excluded(f_name(file, fbuf), 1, ALL_FILTERS)) {
+ 					/* Keep dirs through this dir. */
+ 					for (j = prev_depth-1; ; j--) {
+ 						fp = flist->sorted[prev_i];
+diff --git a/generator.c b/generator.c
+index ddf44a02..af2e2902 100644
+--- a/generator.c
++++ b/generator.c
+@@ -382,9 +382,13 @@ static void do_delete_pass(void)
+ 		rprintf(FINFO, "                    \r");
+ }
+ 
+-static inline int time_differs(struct file_struct *file, stat_x *sxp)
++static inline int time_diff(STRUCT_STAT *stp, struct file_struct *file)
+ {
+-	return cmp_time(sxp->st.st_mtime, file->modtime);
++#ifdef ST_MTIME_NSEC
++	return cmp_time(stp->st_mtime, stp->ST_MTIME_NSEC, file->modtime, F_MOD_NSEC(file));
++#else
++	return cmp_time(stp->st_mtime, 0L, file->modtime, 0L);
++#endif
+ }
+ 
+ static inline int perms_differ(struct file_struct *file, stat_x *sxp)
+@@ -441,7 +445,7 @@ int unchanged_attrs(const char *fname, struct file_struct *file, stat_x *sxp)
+ {
+ 	if (S_ISLNK(file->mode)) {
+ #ifdef CAN_SET_SYMLINK_TIMES
+-		if (preserve_times & PRESERVE_LINK_TIMES && time_differs(file, sxp))
++		if (preserve_times & PRESERVE_LINK_TIMES && time_diff(&sxp->st, file))
+ 			return 0;
+ #endif
+ #ifdef CAN_CHMOD_SYMLINK
+@@ -461,7 +465,7 @@ int unchanged_attrs(const char *fname, struct file_struct *file, stat_x *sxp)
+ 			return 0;
+ #endif
+ 	} else {
+-		if (preserve_times && time_differs(file, sxp))
++		if (preserve_times && time_diff(&sxp->st, file))
+ 			return 0;
+ 		if (perms_differ(file, sxp))
+ 			return 0;
+@@ -496,7 +500,7 @@ void itemize(const char *fnamecmp, struct file_struct *file, int ndx, int statre
+ 			if (iflags & ITEM_LOCAL_CHANGE)
+ 				iflags |= symlink_timeset_failed_flags;
+ 		} else if (keep_time
+-		 ? cmp_time(file->modtime, sxp->st.st_mtime) != 0
++		 ? time_diff(&sxp->st, file)
+ 		 : iflags & (ITEM_TRANSFER|ITEM_LOCAL_CHANGE) && !(iflags & ITEM_MATCHED)
+ 		  && (!(iflags & ITEM_XNAME_FOLLOWS) || *xname))
+ 			iflags |= ITEM_REPORT_TIME;
+@@ -588,7 +592,7 @@ int unchanged_file(char *fn, struct file_struct *file, STRUCT_STAT *st)
+ 	if (ignore_times)
+ 		return 0;
+ 
+-	return cmp_time(st->st_mtime, file->modtime) == 0;
++	return time_diff(st, file) == 0;
+ }
+ 
+ 
+@@ -765,7 +769,7 @@ static struct file_struct *find_fuzzy(struct file_struct *file, struct file_list
+ 			if (!S_ISREG(fp->mode) || !F_LENGTH(fp) || fp->flags & FLAG_FILE_SENT)
+ 				continue;
+ 
+-			if (F_LENGTH(fp) == F_LENGTH(file) && cmp_time(fp->modtime, file->modtime) == 0) {
++			if (F_LENGTH(fp) == F_LENGTH(file) && cmp_time(fp->modtime, 0L, file->modtime, 0L) == 0) {
+ 				if (DEBUG_GTE(FUZZY, 2))
+ 					rprintf(FINFO, "fuzzy size/modtime match for %s\n", f_name(fp, NULL));
+ 				*fnamecmp_type_ptr = FNAMECMP_FUZZY + i;
+@@ -1262,7 +1266,7 @@ static void recv_generator(char *fname, struct file_struct *file, int ndx,
+ 			 * this function was asked to process in the file list. */
+ 			if (!inc_recurse
+ 			 && (*dn != '.' || dn[1]) /* Avoid an issue with --relative and the "." dir. */
+-			 && (prior_dir_file && strcmp(dn, f_name(prior_dir_file, NULL)) != 0)
++			 && (!prior_dir_file || strcmp(dn, f_name(prior_dir_file, NULL)) != 0)
+ 			 && flist_find_name(cur_flist, dn, 1) < 0) {
+ 				rprintf(FERROR,
+ 					"ABORTING due to invalid path from sender: %s/%s\n",
+@@ -1674,8 +1678,7 @@ static void recv_generator(char *fname, struct file_struct *file, int ndx,
+ 		goto cleanup;
+ 	}
+ 
+-	if (update_only > 0 && statret == 0
+-	    && cmp_time(sx.st.st_mtime, file->modtime) > 0) {
++	if (update_only > 0 && statret == 0 && time_diff(&sx.st, file) > 0) {
+ 		if (INFO_GTE(SKIP, 1))
+ 			rprintf(FINFO, "%s is newer\n", fname);
+ #ifdef SUPPORT_HARD_LINKS
+@@ -1752,7 +1755,7 @@ static void recv_generator(char *fname, struct file_struct *file, int ndx,
+ 
+ 	if (fnamecmp_type <= FNAMECMP_BASIS_DIR_HIGH)
+ 		;
+-	else if (fnamecmp_type == FNAMECMP_FUZZY)
++	else if (fnamecmp_type >= FNAMECMP_FUZZY)
+ 		;
+ 	else if (unchanged_file(fnamecmp, file, &sx.st)) {
+ 		if (partialptr) {
+@@ -2062,8 +2065,7 @@ static void touch_up_dirs(struct file_list *flist, int ndx)
+ 			do_chmod(fname, file->mode);
+ 		if (need_retouch_dir_times) {
+ 			STRUCT_STAT st;
+-			if (link_stat(fname, &st, 0) == 0
+-			 && cmp_time(st.st_mtime, file->modtime) != 0)
++			if (link_stat(fname, &st, 0) == 0 && time_diff(&st, file))
+ 				set_modtime(fname, file->modtime, F_MOD_NSEC(file), file->mode);
+ 		}
+ 		if (counter >= loopchk_limit) {
+diff --git a/hashtable.c b/hashtable.c
+index f0fbe518..238db08d 100644
+--- a/hashtable.c
++++ b/hashtable.c
+@@ -170,3 +170,305 @@ void *hashtable_find(struct hashtable *tbl, int64 key, int allocate_if_missing)
+ 	tbl->entries++;
+ 	return node;
+ }
++
++#ifndef WORDS_BIGENDIAN
++# define HASH_LITTLE_ENDIAN 1
++# define HASH_BIG_ENDIAN 0
++#else
++# define HASH_LITTLE_ENDIAN 0
++# define HASH_BIG_ENDIAN 1
++#endif
++
++/*
++ -------------------------------------------------------------------------------
++ lookup3.c, by Bob Jenkins, May 2006, Public Domain.
++
++ These are functions for producing 32-bit hashes for hash table lookup.
++ hash_word(), hashlittle(), hashlittle2(), hashbig(), mix(), and final()
++ are externally useful functions.  Routines to test the hash are included
++ if SELF_TEST is defined.  You can use this free for any purpose.  It's in
++ the public domain.  It has no warranty.
++
++ You probably want to use hashlittle().  hashlittle() and hashbig()
++ hash byte arrays.  hashlittle() is is faster than hashbig() on
++ little-endian machines.  Intel and AMD are little-endian machines.
++ On second thought, you probably want hashlittle2(), which is identical to
++ hashlittle() except it returns two 32-bit hashes for the price of one.
++ You could implement hashbig2() if you wanted but I haven't bothered here.
++
++ If you want to find a hash of, say, exactly 7 integers, do
++   a = i1;  b = i2;  c = i3;
++   mix(a,b,c);
++   a += i4; b += i5; c += i6;
++   mix(a,b,c);
++   a += i7;
++   final(a,b,c);
++ then use c as the hash value.  If you have a variable length array of
++ 4-byte integers to hash, use hash_word().  If you have a byte array (like
++ a character string), use hashlittle().  If you have several byte arrays, or
++ a mix of things, see the comments above hashlittle().
++
++ Why is this so big?  I read 12 bytes at a time into 3 4-byte integers,
++ then mix those integers.  This is fast (you can do a lot more thorough
++ mixing with 12*3 instructions on 3 integers than you can with 3 instructions
++ on 1 byte), but shoehorning those bytes into integers efficiently is messy.
++*/
++
++#define hashsize(n) ((uint32_t)1<<(n))
++#define hashmask(n) (hashsize(n)-1)
++#define rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
++
++/*
++ -------------------------------------------------------------------------------
++ mix -- mix 3 32-bit values reversibly.
++
++ This is reversible, so any information in (a,b,c) before mix() is
++ still in (a,b,c) after mix().
++
++ If four pairs of (a,b,c) inputs are run through mix(), or through
++ mix() in reverse, there are at least 32 bits of the output that
++ are sometimes the same for one pair and different for another pair.
++ This was tested for:
++ * pairs that differed by one bit, by two bits, in any combination
++   of top bits of (a,b,c), or in any combination of bottom bits of
++   (a,b,c).
++ * "differ" is defined as +, -, ^, or ~^.  For + and -, I transformed
++   the output delta to a Gray code (a^(a>>1)) so a string of 1's (as
++   is commonly produced by subtraction) look like a single 1-bit
++   difference.
++ * the base values were pseudorandom, all zero but one bit set, or
++   all zero plus a counter that starts at zero.
++
++ Some k values for my "a-=c; a^=rot(c,k); c+=b;" arrangement that
++ satisfy this are
++     4  6  8 16 19  4
++     9 15  3 18 27 15
++    14  9  3  7 17  3
++ Well, "9 15 3 18 27 15" didn't quite get 32 bits diffing
++ for "differ" defined as + with a one-bit base and a two-bit delta.  I
++ used http://burtleburtle.net/bob/hash/avalanche.html to choose
++ the operations, constants, and arrangements of the variables.
++
++ This does not achieve avalanche.  There are input bits of (a,b,c)
++ that fail to affect some output bits of (a,b,c), especially of a.  The
++ most thoroughly mixed value is c, but it doesn't really even achieve
++ avalanche in c.
++
++ This allows some parallelism.  Read-after-writes are good at doubling
++ the number of bits affected, so the goal of mixing pulls in the opposite
++ direction as the goal of parallelism.  I did what I could.  Rotates
++ seem to cost as much as shifts on every machine I could lay my hands
++ on, and rotates are much kinder to the top and bottom bits, so I used
++ rotates.
++ -------------------------------------------------------------------------------
++*/
++#define mix(a,b,c) \
++{ \
++  a -= c;  a ^= rot(c, 4);  c += b; \
++  b -= a;  b ^= rot(a, 6);  a += c; \
++  c -= b;  c ^= rot(b, 8);  b += a; \
++  a -= c;  a ^= rot(c,16);  c += b; \
++  b -= a;  b ^= rot(a,19);  a += c; \
++  c -= b;  c ^= rot(b, 4);  b += a; \
++}
++
++/*
++ -------------------------------------------------------------------------------
++ final -- final mixing of 3 32-bit values (a,b,c) into c
++
++ Pairs of (a,b,c) values differing in only a few bits will usually
++ produce values of c that look totally different.  This was tested for
++ * pairs that differed by one bit, by two bits, in any combination
++   of top bits of (a,b,c), or in any combination of bottom bits of
++   (a,b,c).
++ * "differ" is defined as +, -, ^, or ~^.  For + and -, I transformed
++   the output delta to a Gray code (a^(a>>1)) so a string of 1's (as
++   is commonly produced by subtraction) look like a single 1-bit
++   difference.
++ * the base values were pseudorandom, all zero but one bit set, or
++   all zero plus a counter that starts at zero.
++
++ These constants passed:
++  14 11 25 16 4 14 24
++  12 14 25 16 4 14 24
++ and these came close:
++   4  8 15 26 3 22 24
++  10  8 15 26 3 22 24
++  11  8 15 26 3 22 24
++ -------------------------------------------------------------------------------
++*/
++#define final(a,b,c) \
++{ \
++  c ^= b; c -= rot(b,14); \
++  a ^= c; a -= rot(c,11); \
++  b ^= a; b -= rot(a,25); \
++  c ^= b; c -= rot(b,16); \
++  a ^= c; a -= rot(c,4);  \
++  b ^= a; b -= rot(a,14); \
++  c ^= b; c -= rot(b,24); \
++}
++
++
++/*
++ -------------------------------------------------------------------------------
++ hashlittle() -- hash a variable-length key into a 32-bit value
++   k       : the key (the unaligned variable-length array of bytes)
++   length  : the length of the key, counting by bytes
++   val2    : IN: can be any 4-byte value OUT: second 32 bit hash.
++ Returns a 32-bit value.  Every bit of the key affects every bit of
++ the return value.  Two keys differing by one or two bits will have
++ totally different hash values.  Note that the return value is better
++ mixed than val2, so use that first.
++
++ The best hash table sizes are powers of 2.  There is no need to do
++ mod a prime (mod is sooo slow!).  If you need less than 32 bits,
++ use a bitmask.  For example, if you need only 10 bits, do
++   h = (h & hashmask(10));
++ In which case, the hash table should have hashsize(10) elements.
++
++ If you are hashing n strings (uint8_t **)k, do it like this:
++   for (i=0, h=0; i<n; ++i) h = hashlittle( k[i], len[i], h);
++
++ By Bob Jenkins, 2006.  bob_jenkins@burtleburtle.net.  You may use this
++ code any way you wish, private, educational, or commercial.  It's free.
++
++ Use for hash table lookup, or anything where one collision in 2^^32 is
++ acceptable.  Do NOT use for cryptographic purposes.
++ -------------------------------------------------------------------------------
++*/
++
++uint32_t hashlittle(const void *key, size_t length)
++{
++  uint32_t a,b,c;                                          /* internal state */
++  union { const void *ptr; size_t i; } u;     /* needed for Mac Powerbook G4 */
++
++  /* Set up the internal state */
++  a = b = c = 0xdeadbeef + ((uint32_t)length);
++
++  u.ptr = key;
++  if (HASH_LITTLE_ENDIAN && ((u.i & 0x3) == 0)) {
++    const uint32_t *k = (const uint32_t *)key;         /* read 32-bit chunks */
++    const uint8_t  *k8;
++
++    /*------ all but last block: aligned reads and affect 32 bits of (a,b,c) */
++    while (length > 12)
++    {
++      a += k[0];
++      b += k[1];
++      c += k[2];
++      mix(a,b,c);
++      length -= 12;
++      k += 3;
++    }
++
++    /*----------------------------- handle the last (probably partial) block */
++    k8 = (const uint8_t *)k;
++    switch(length)
++    {
++    case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
++    case 11: c+=((uint32_t)k8[10])<<16;  /* fall through */
++    case 10: c+=((uint32_t)k8[9])<<8;    /* fall through */
++    case 9 : c+=k8[8];                   /* fall through */
++    case 8 : b+=k[1]; a+=k[0]; break;
++    case 7 : b+=((uint32_t)k8[6])<<16;   /* fall through */
++    case 6 : b+=((uint32_t)k8[5])<<8;    /* fall through */
++    case 5 : b+=k8[4];                   /* fall through */
++    case 4 : a+=k[0]; break;
++    case 3 : a+=((uint32_t)k8[2])<<16;   /* fall through */
++    case 2 : a+=((uint32_t)k8[1])<<8;    /* fall through */
++    case 1 : a+=k8[0]; break;
++    case 0 : return c;
++    }
++  } else if (HASH_LITTLE_ENDIAN && ((u.i & 0x1) == 0)) {
++    const uint16_t *k = (const uint16_t *)key;         /* read 16-bit chunks */
++    const uint8_t  *k8;
++
++    /*--------------- all but last block: aligned reads and different mixing */
++    while (length > 12)
++    {
++      a += k[0] + (((uint32_t)k[1])<<16);
++      b += k[2] + (((uint32_t)k[3])<<16);
++      c += k[4] + (((uint32_t)k[5])<<16);
++      mix(a,b,c);
++      length -= 12;
++      k += 6;
++    }
++
++    /*----------------------------- handle the last (probably partial) block */
++    k8 = (const uint8_t *)k;
++    switch(length)
++    {
++    case 12: c+=k[4]+(((uint32_t)k[5])<<16);
++             b+=k[2]+(((uint32_t)k[3])<<16);
++             a+=k[0]+(((uint32_t)k[1])<<16);
++             break;
++    case 11: c+=((uint32_t)k8[10])<<16;     /* fall through */
++    case 10: c+=k[4];
++             b+=k[2]+(((uint32_t)k[3])<<16);
++             a+=k[0]+(((uint32_t)k[1])<<16);
++             break;
++    case 9 : c+=k8[8];                      /* fall through */
++    case 8 : b+=k[2]+(((uint32_t)k[3])<<16);
++             a+=k[0]+(((uint32_t)k[1])<<16);
++             break;
++    case 7 : b+=((uint32_t)k8[6])<<16;      /* fall through */
++    case 6 : b+=k[2];
++             a+=k[0]+(((uint32_t)k[1])<<16);
++             break;
++    case 5 : b+=k8[4];                      /* fall through */
++    case 4 : a+=k[0]+(((uint32_t)k[1])<<16);
++             break;
++    case 3 : a+=((uint32_t)k8[2])<<16;      /* fall through */
++    case 2 : a+=k[0];
++             break;
++    case 1 : a+=k8[0];
++             break;
++    case 0 : return c;                     /* zero length requires no mixing */
++    }
++
++  } else {                        /* need to read the key one byte at a time */
++    const uint8_t *k = (const uint8_t *)key;
++
++    /*--------------- all but the last block: affect some 32 bits of (a,b,c) */
++    while (length > 12)
++    {
++      a += k[0];
++      a += ((uint32_t)k[1])<<8;
++      a += ((uint32_t)k[2])<<16;
++      a += ((uint32_t)k[3])<<24;
++      b += k[4];
++      b += ((uint32_t)k[5])<<8;
++      b += ((uint32_t)k[6])<<16;
++      b += ((uint32_t)k[7])<<24;
++      c += k[8];
++      c += ((uint32_t)k[9])<<8;
++      c += ((uint32_t)k[10])<<16;
++      c += ((uint32_t)k[11])<<24;
++      mix(a,b,c);
++      length -= 12;
++      k += 12;
++    }
++
++    /*-------------------------------- last block: affect all 32 bits of (c) */
++    switch(length)                   /* all the case statements fall through */
++    {
++    case 12: c+=((uint32_t)k[11])<<24;
++    case 11: c+=((uint32_t)k[10])<<16;
++    case 10: c+=((uint32_t)k[9])<<8;
++    case 9 : c+=k[8];
++    case 8 : b+=((uint32_t)k[7])<<24;
++    case 7 : b+=((uint32_t)k[6])<<16;
++    case 6 : b+=((uint32_t)k[5])<<8;
++    case 5 : b+=k[4];
++    case 4 : a+=((uint32_t)k[3])<<24;
++    case 3 : a+=((uint32_t)k[2])<<16;
++    case 2 : a+=((uint32_t)k[1])<<8;
++    case 1 : a+=k[0];
++             break;
++    case 0 : return c;
++    }
++  }
++
++  final(a,b,c);
++  return c;
++}
+diff --git a/loadparm.c b/loadparm.c
+index 6d75b4dd..a531106c 100644
+--- a/loadparm.c
++++ b/loadparm.c
+@@ -93,6 +93,9 @@ struct parm_struct {
+ /* This structure describes global (ie., server-wide) parameters. */
+ typedef struct {
+ 	char *bind_address;
++	char *daemon_chroot;
++	char *daemon_gid;
++	char *daemon_uid;
+ 	char *motd_file;
+ 	char *pid_file;
+ 	char *socket_options;
+@@ -129,6 +132,7 @@ typedef struct {
+ 	char *prexfer_exec;
+ 	char *refuse_options;
+ 	char *secrets_file;
++	char *syslog_tag;
+ 	char *temp_dir;
+ 	char *uid;
+ /* NOTE: update this macro if the last char* variable changes! */
+@@ -172,6 +176,9 @@ static const all_vars Defaults = {
+  /* ==== global_vars ==== */
+  {
+  /* bind_address; */		NULL,
++ /* daemon_chroot; */		NULL,
++ /* daemon_gid; */		NULL,
++ /* daemon_uid; */		NULL,
+  /* motd_file; */		NULL,
+  /* pid_file; */		NULL,
+  /* socket_options; */		NULL,
+@@ -205,6 +212,7 @@ static const all_vars Defaults = {
+  /* prexfer_exec; */		NULL,
+  /* refuse_options; */		NULL,
+  /* secrets_file; */		NULL,
++ /* syslog_tag; */		"rsyncd",
+  /* temp_dir; */ 		NULL,
+  /* uid; */			NULL,
+ 
+@@ -313,6 +321,9 @@ static struct enum_list enum_facilities[] = {
+ static struct parm_struct parm_table[] =
+ {
+  {"address",           P_STRING, P_GLOBAL,&Vars.g.bind_address,        NULL,0},
++ {"daemon chroot",     P_STRING, P_GLOBAL,&Vars.g.daemon_chroot,       NULL,0},
++ {"daemon gid",        P_STRING, P_GLOBAL,&Vars.g.daemon_gid,          NULL,0},
++ {"daemon uid",        P_STRING, P_GLOBAL,&Vars.g.daemon_uid,          NULL,0},
+  {"listen backlog",    P_INTEGER,P_GLOBAL,&Vars.g.listen_backlog,      NULL,0},
+  {"motd file",         P_STRING, P_GLOBAL,&Vars.g.motd_file,           NULL,0},
+  {"pid file",          P_STRING, P_GLOBAL,&Vars.g.pid_file,            NULL,0},
+@@ -357,6 +368,7 @@ static struct parm_struct parm_table[] =
+  {"secrets file",      P_STRING, P_LOCAL, &Vars.l.secrets_file,        NULL,0},
+  {"strict modes",      P_BOOL,   P_LOCAL, &Vars.l.strict_modes,        NULL,0},
+  {"syslog facility",   P_ENUM,   P_LOCAL, &Vars.l.syslog_facility,     enum_facilities,0},
++ {"syslog tag",        P_STRING, P_LOCAL, &Vars.l.syslog_tag,          NULL,0},
+  {"temp dir",          P_PATH,   P_LOCAL, &Vars.l.temp_dir,            NULL,0},
+  {"timeout",           P_INTEGER,P_LOCAL, &Vars.l.timeout,             NULL,0},
+  {"transfer logging",  P_BOOL,   P_LOCAL, &Vars.l.transfer_logging,    NULL,0},
+@@ -444,6 +456,9 @@ static char *expand_vars(char *str)
+  int fn_name(int i) {return LP_SNUM_OK(i)? iSECTION(i).val : Vars.l.val;}
+ 
+ FN_GLOBAL_STRING(lp_bind_address, &Vars.g.bind_address)
++FN_GLOBAL_STRING(lp_daemon_chroot, &Vars.g.daemon_chroot)
++FN_GLOBAL_STRING(lp_daemon_gid, &Vars.g.daemon_gid)
++FN_GLOBAL_STRING(lp_daemon_uid, &Vars.g.daemon_uid)
+ FN_GLOBAL_STRING(lp_motd_file, &Vars.g.motd_file)
+ FN_GLOBAL_STRING(lp_pid_file, &Vars.g.pid_file)
+ FN_GLOBAL_STRING(lp_socket_options, &Vars.g.socket_options)
+@@ -474,6 +489,7 @@ FN_LOCAL_STRING(lp_postxfer_exec, postxfer_exec)
+ FN_LOCAL_STRING(lp_prexfer_exec, prexfer_exec)
+ FN_LOCAL_STRING(lp_refuse_options, refuse_options)
+ FN_LOCAL_STRING(lp_secrets_file, secrets_file)
++FN_LOCAL_STRING(lp_syslog_tag, syslog_tag)
+ FN_LOCAL_STRING(lp_temp_dir, temp_dir)
+ FN_LOCAL_STRING(lp_uid, uid)
+ 
+diff --git a/log.c b/log.c
+index 24256deb..b145ee1d 100644
+--- a/log.c
++++ b/log.c
+@@ -31,12 +31,13 @@ extern int am_generator;
+ extern int local_server;
+ extern int quiet;
+ extern int module_id;
+-extern int checksum_len;
+ extern int allow_8bit_chars;
+ extern int protocol_version;
+ extern int always_checksum;
+ extern int preserve_times;
+ extern int msgs2stderr;
++extern int xfersum_type;
++extern int checksum_type;
+ extern int stdout_format_has_i;
+ extern int stdout_format_has_o_or_i;
+ extern int logfile_format_has_i;
+@@ -46,6 +47,7 @@ extern int64 total_data_written;
+ extern int64 total_data_read;
+ extern mode_t orig_umask;
+ extern char *auth_user;
++extern char *checksum_choice;
+ extern char *stdout_format;
+ extern char *logfile_format;
+ extern char *logfile_name;
+@@ -132,21 +134,16 @@ static void logit(int priority, const char *buf)
+ 
+ static void syslog_init()
+ {
+-	static int been_here = 0;
+ 	int options = LOG_PID;
+ 
+-	if (been_here)
+-		return;
+-	been_here = 1;
+-
+ #ifdef LOG_NDELAY
+ 	options |= LOG_NDELAY;
+ #endif
+ 
+ #ifdef LOG_DAEMON
+-	openlog("rsyncd", options, lp_syslog_facility(module_id));
++	openlog(lp_syslog_tag(module_id), options, lp_syslog_facility(module_id));
+ #else
+-	openlog("rsyncd", options);
++	openlog(lp_syslog_tag(module_id), options);
+ #endif
+ 
+ #ifndef LOG_NDELAY
+@@ -166,14 +163,16 @@ static void logfile_open(void)
+ 		rsyserr(FERROR, fopen_errno,
+ 			"failed to open log-file %s", logfile_name);
+ 		rprintf(FINFO, "Ignoring \"log file\" setting.\n");
++		logfile_name = "";
+ 	}
+ }
+ 
+ void log_init(int restart)
+ {
+ 	if (log_initialised) {
+-		if (!restart)
++		if (!restart) /* Note: a restart only happens with am_daemon */
+ 			return;
++		assert(logfile_name); /* all am_daemon procs got at least an empty string */
+ 		if (strcmp(logfile_name, lp_log_file(module_id)) != 0) {
+ 			if (logfile_fp) {
+ 				fclose(logfile_fp);
+@@ -183,7 +182,8 @@ void log_init(int restart)
+ 			logfile_name = NULL;
+ 		} else if (*logfile_name)
+ 			return; /* unchanged, non-empty "log file" names */
+-		else if (lp_syslog_facility(-1) != lp_syslog_facility(module_id))
++		else if (lp_syslog_facility(-1) != lp_syslog_facility(module_id)
++		      || strcmp(lp_syslog_tag(-1), lp_syslog_tag(module_id)) != 0)
+ 			closelog();
+ 		else
+ 			return; /* unchanged syslog settings */
+@@ -205,6 +205,7 @@ void log_init(int restart)
+ 		syslog_init();
+ }
+ 
++/* Note that this close & reopen idiom intentionally ignores syslog logging. */
+ void logfile_close(void)
+ {
+ 	if (logfile_fp) {
+@@ -669,13 +670,15 @@ static void log_formatted(enum logcode code, const char *format, const char *op,
+ 			n = buf2;
+ 			break;
+ 		case 'C':
+-			if (protocol_version >= 30
+-			 && (iflags & ITEM_TRANSFER
+-			  || (always_checksum && S_ISREG(file->mode)))) {
+-				const char *sum = iflags & ITEM_TRANSFER
+-						? sender_file_sum : F_SUM(file);
+-				n = sum_as_hex(sum);
+-			} else {
++			n = NULL;
++			if (S_ISREG(file->mode)) {
++				if (always_checksum && canonical_checksum(checksum_type))
++					n = sum_as_hex(checksum_type, F_SUM(file));
++				else if (iflags & ITEM_TRANSFER && canonical_checksum(xfersum_type))
++					n = sum_as_hex(xfersum_type, sender_file_sum);
++			}
++			if (!n) {
++				int checksum_len = csum_len_for_type(always_checksum ? checksum_type : xfersum_type);
+ 				memset(buf2, ' ', checksum_len*2);
+ 				buf2[checksum_len*2] = '\0';
+ 				n = buf2;
+diff --git a/m4/socklen_t.m4 b/m4/socklen_t.m4
+index 831820ca..99ca6d4e 100644
+--- a/m4/socklen_t.m4
++++ b/m4/socklen_t.m4
+@@ -18,15 +18,15 @@ AC_DEFUN([TYPE_SOCKLEN_T],
+          rsync_cv_socklen_t_equiv=
+          for arg2 in "struct sockaddr" void; do
+             for t in int size_t unsigned long "unsigned long"; do
+-               AC_TRY_COMPILE([
++               AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+ #include <sys/types.h>
+ #include <sys/socket.h>
+ 
+                   int getpeername (int, $arg2 *, $t *);
+-               ],[
++               ]],[[
+                   $t len;
+                   getpeername(0,0,&len);
+-               ],[
++               ]])],[
+                   rsync_cv_socklen_t_equiv="$t"
+                   break
+                ])
+diff --git a/main.c b/main.c
+index 4613c962..3908ccf5 100644
+--- a/main.c
++++ b/main.c
+@@ -302,6 +302,13 @@ static void output_itemized_counts(const char *prefix, int *counts)
+ 	rprintf(FINFO, "%s: %s%s\n", prefix, comma_num(total), buf);
+ }
+ 
++static const char *bytes_per_sec_human_dnum(void)
++{
++	if (starttime == (time_t)-1 || endtime == (time_t)-1)
++		return "UNKNOWN";
++	return human_dnum((total_written + total_read) / (0.5 + (endtime - starttime)), 2);
++}
++
+ static void output_summary(void)
+ {
+ 	if (INFO_GTE(STATS, 2)) {
+@@ -342,7 +349,7 @@ static void output_summary(void)
+ 		rprintf(FINFO,
+ 			"sent %s bytes  received %s bytes  %s bytes/sec\n",
+ 			human_num(total_written), human_num(total_read),
+-			human_dnum((total_written + total_read)/(0.5 + (endtime - starttime)), 2));
++			bytes_per_sec_human_dnum());
+ 		rprintf(FINFO, "total size is %s  speedup is %s%s\n",
+ 			human_num(stats.total_size),
+ 			comma_dnum((double)stats.total_size / (total_written+total_read), 2),
+@@ -865,7 +872,8 @@ static int do_recv(int f_in, int f_out, char *local_name)
+ 				rprintf(FERROR, "Failed to stat %s: %s\n", backup_dir_buf, strerror(errno));
+ 				exit_cleanup(RERR_FILEIO);
+ 			}
+-			rprintf(FINFO, "(new) backup_dir is %s\n", backup_dir_buf);
++			if (INFO_GTE(BACKUP, 1))
++				rprintf(FINFO, "(new) backup_dir is %s\n", backup_dir_buf);
+ 		} else if (INFO_GTE(BACKUP, 1))
+ 			rprintf(FINFO, "backup_dir is %s\n", backup_dir_buf);
+ 		if (backup_dir_len > 1)
+@@ -1587,8 +1595,6 @@ int main(int argc,char *argv[])
+ 	 * that implement getcwd that way "pwd" can't be found after chroot. */
+ 	change_dir(NULL, CD_NORMAL);
+ 
+-	init_flist();
+-
+ 	if ((write_batch || read_batch) && !am_server) {
+ 		if (write_batch)
+ 			write_batch_shell_file(orig_argc, orig_argv, argc);
+diff --git a/match.c b/match.c
+index b15f2eb4..ff10310a 100644
+--- a/match.c
++++ b/match.c
+@@ -24,7 +24,7 @@
+ 
+ extern int checksum_seed;
+ extern int append_mode;
+-extern int checksum_len;
++extern int xfersum_type;
+ 
+ int updating_basis_file;
+ char sender_file_sum[MAX_DIGEST_LEN];
+@@ -360,13 +360,15 @@ static void hash_search(int f,struct sum_struct *s,
+  **/
+ void match_sums(int f, struct sum_struct *s, struct map_struct *buf, OFF_T len)
+ {
++	int checksum_len;
++
+ 	last_match = 0;
+ 	false_alarms = 0;
+ 	hash_hits = 0;
+ 	matches = 0;
+ 	data_transfer = 0;
+ 
+-	sum_init(checksum_seed);
++	sum_init(xfersum_type, checksum_seed);
+ 
+ 	if (append_mode > 0) {
+ 		if (append_mode == 2) {
+@@ -407,8 +409,7 @@ void match_sums(int f, struct sum_struct *s, struct map_struct *buf, OFF_T len)
+ 		matched(f, s, buf, len, -1);
+ 	}
+ 
+-	if (sum_end(sender_file_sum) != checksum_len)
+-		overflow_exit("checksum_len"); /* Impossible... */
++	checksum_len = sum_end(sender_file_sum);
+ 
+ 	/* If we had a read error, send a bad checksum.  We use all bits
+ 	 * off as long as the checksum doesn't happen to be that, in
+diff --git a/options.c b/options.c
+index 74239bf2..64ec8b84 100644
+--- a/options.c
++++ b/options.c
+@@ -182,6 +182,7 @@ char *dest_option = NULL;
+ static int remote_option_alloc = 0;
+ int remote_option_cnt = 0;
+ const char **remote_options = NULL;
++const char *checksum_choice = NULL;
+ 
+ int quiet = 0;
+ int output_motd = 1;
+@@ -713,7 +714,7 @@ void usage(enum logcode F)
+ #ifdef SUPPORT_XATTRS
+   rprintf(F,"     --fake-super            store/recover privileged attrs using xattrs\n");
+ #endif
+-  rprintf(F," -S, --sparse                handle sparse files efficiently\n");
++  rprintf(F," -S, --sparse                turn sequences of nulls into sparse blocks\n");
+ #ifdef SUPPORT_PREALLOCATION
+   rprintf(F,"     --preallocate           allocate dest files before writing them\n");
+ #else
+@@ -721,6 +722,7 @@ void usage(enum logcode F)
+ #endif
+   rprintf(F," -n, --dry-run               perform a trial run with no changes made\n");
+   rprintf(F," -W, --whole-file            copy files whole (without delta-xfer algorithm)\n");
++  rprintf(F,"     --checksum-choice=STR   choose the checksum algorithms\n");
+   rprintf(F," -x, --one-file-system       don't cross filesystem boundaries\n");
+   rprintf(F," -B, --block-size=SIZE       force a fixed checksum block-size\n");
+   rprintf(F," -e, --rsh=COMMAND           specify the remote shell to use\n");
+@@ -755,7 +757,7 @@ void usage(enum logcode F)
+   rprintf(F," -I, --ignore-times          don't skip files that match in size and mod-time\n");
+   rprintf(F," -M, --remote-option=OPTION  send OPTION to the remote side only\n");
+   rprintf(F,"     --size-only             skip files that match in size\n");
+-  rprintf(F,"     --modify-window=NUM     compare mod-times with reduced accuracy\n");
++  rprintf(F," -@, --modify-window=NUM     set the accuracy for mod-time comparisons\n");
+   rprintf(F," -T, --temp-dir=DIR          create temporary files in directory DIR\n");
+   rprintf(F," -y, --fuzzy                 find similar file for basis if no dest file\n");
+   rprintf(F,"     --compare-dest=DIR      also compare destination files relative to DIR\n");
+@@ -871,7 +873,7 @@ static struct poptOption long_options[] = {
+   {"omit-link-times", 'J', POPT_ARG_VAL,    &omit_link_times, 1, 0, 0 },
+   {"no-omit-link-times",0, POPT_ARG_VAL,    &omit_link_times, 0, 0, 0 },
+   {"no-J",             0,  POPT_ARG_VAL,    &omit_link_times, 0, 0, 0 },
+-  {"modify-window",    0,  POPT_ARG_INT,    &modify_window, OPT_MODIFY_WINDOW, 0, 0 },
++  {"modify-window",   '@', POPT_ARG_INT,    &modify_window, OPT_MODIFY_WINDOW, 0, 0 },
+   {"super",            0,  POPT_ARG_VAL,    &am_root, 2, 0, 0 },
+   {"no-super",         0,  POPT_ARG_VAL,    &am_root, 0, 0, 0 },
+   {"fake-super",       0,  POPT_ARG_VAL,    &am_root, -1, 0, 0 },
+@@ -953,6 +955,7 @@ static struct poptOption long_options[] = {
+   {"cvs-exclude",     'C', POPT_ARG_NONE,   &cvs_exclude, 0, 0, 0 },
+   {"whole-file",      'W', POPT_ARG_VAL,    &whole_file, 1, 0, 0 },
+   {"no-whole-file",    0,  POPT_ARG_VAL,    &whole_file, 0, 0, 0 },
++  {"checksum-choice",  0,  POPT_ARG_STRING, &checksum_choice, 0, 0, 0 },
+   {"no-W",             0,  POPT_ARG_VAL,    &whole_file, 0, 0, 0 },
+   {"checksum",        'c', POPT_ARG_VAL,    &always_checksum, 1, 0, 0 },
+   {"no-checksum",      0,  POPT_ARG_VAL,    &always_checksum, 0, 0, 0 },
+@@ -1278,6 +1281,22 @@ static void create_refuse_error(int which)
+ 	}
+ }
+ 
++/* This is used to make sure that --daemon & --server cannot be aliased to
++ * something else. These options have always disabled popt aliases for the
++ * parsing of a daemon or server command-line, but we have to make sure that
++ * these options cannot vanish so that the alias disabling can take effect. */
++static void popt_unalias(poptContext con, const char *opt)
++{
++	struct poptAlias unalias;
++
++	unalias.longName = opt + 2; /* point past the leading "--" */
++	unalias.shortName = '\0';
++	unalias.argc = 1;
++	unalias.argv = new_array(const char*, 1);
++	unalias.argv[0] = strdup(opt);
++
++	poptAddAlias(con, unalias, 0);
++}
+ 
+ /**
+  * Process command line arguments.  Called on both local and remote.
+@@ -1317,8 +1336,11 @@ int parse_arguments(int *argc_p, const char ***argv_p)
+ 	if (pc)
+ 		poptFreeContext(pc);
+ 	pc = poptGetContext(RSYNC_NAME, argc, argv, long_options, 0);
+-	if (!am_server)
++	if (!am_server) {
+ 		poptReadDefaultConfig(pc, 0);
++		popt_unalias(pc, "--daemon");
++		popt_unalias(pc, "--server");
++	}
+ 
+ 	while ((opt = poptGetNextOpt(pc)) != -1) {
+ 		/* most options are handled automatically by popt;
+@@ -1814,6 +1836,15 @@ int parse_arguments(int *argc_p, const char ***argv_p)
+ 		}
+ 	}
+ 
++	if (checksum_choice && strcmp(checksum_choice, "auto") != 0 && strcmp(checksum_choice, "auto,auto") != 0) {
++		/* Call this early to verify the args and figure out if we need to force
++		 * --whole-file. Note that the parse function will get called again later,
++		 * just in case an "auto" choice needs to know the protocol_version. */
++		if (parse_checksum_choice())
++			whole_file = 1;
++	} else
++		checksum_choice = NULL;
++
+ 	if (human_readable > 1 && argc == 2 && !am_server) {
+ 		/* Allow the old meaning of 'h' (--help) on its own. */
+ 		usage(FINFO);
+@@ -2225,14 +2256,6 @@ int parse_arguments(int *argc_p, const char ***argv_p)
+ 			bwlimit_writemax = 512;
+ 	}
+ 
+-	if (sparse_files && inplace) {
+-		/* Note: we don't check for this below, because --append is
+-		 * OK with --sparse (as long as redos are handled right). */
+-		snprintf(err_buf, sizeof err_buf,
+-			 "--sparse cannot be used with --inplace\n");
+-		return 0;
+-	}
+-
+ 	if (append_mode) {
+ 		if (whole_file > 0) {
+ 			snprintf(err_buf, sizeof err_buf,
+@@ -2597,6 +2620,12 @@ void server_options(char **args, int *argc_p)
+ 		args[ac++] = arg;
+ 	}
+ 
++	if (checksum_choice) {
++		if (asprintf(&arg, "--checksum-choice=%s", checksum_choice) < 0)
++			goto oom;
++		args[ac++] = arg;
++	}
++
+ 	if (am_sender) {
+ 		if (max_delete > 0) {
+ 			if (asprintf(&arg, "--max-delete=%d", max_delete) < 0)
+@@ -2649,8 +2678,9 @@ void server_options(char **args, int *argc_p)
+ 	else if (missing_args == 1 && !am_sender)
+ 		args[ac++] = "--ignore-missing-args";
+ 
+-	if (modify_window_set) {
+-		if (asprintf(&arg, "--modify-window=%d", modify_window) < 0)
++	if (modify_window_set && am_sender) {
++		char *fmt = modify_window < 0 ? "-@%d" : "--modify-window=%d";
++		if (asprintf(&arg, fmt, modify_window) < 0)
+ 			goto oom;
+ 		args[ac++] = arg;
+ 	}
+diff --git a/progress.c b/progress.c
+index 3858fc4a..d19fa254 100644
+--- a/progress.c
++++ b/progress.c
+@@ -25,6 +25,7 @@
+ 
+ extern int am_server;
+ extern int flist_eof;
++extern int quiet;
+ extern int need_unsorted_flist;
+ extern int output_needs_newline;
+ extern struct stats stats;
+@@ -127,7 +128,7 @@ static void rprint_progress(OFF_T ofs, OFF_T size, struct timeval *now,
+ 	pct = ofs == size ? 100 : (int) (100.0 * ofs / size);
+ 	rprintf(FCLIENT, "\r%15s %3d%% %7.2f%s %s%s",
+ 		human_num(ofs), pct, rate, units, rembuf, eol);
+-	if (!is_last) {
++	if (!is_last && !quiet) {
+ 		output_needs_newline = 1;
+ 		rflush(FCLIENT);
+ 	}
+diff --git a/receiver.c b/receiver.c
+index 4ea4c091..3d9bc65f 100644
+--- a/receiver.c
++++ b/receiver.c
+@@ -48,11 +48,12 @@ extern int append_mode;
+ extern int sparse_files;
+ extern int preallocate_files;
+ extern int keep_partial;
+-extern int checksum_len;
+ extern int checksum_seed;
++extern int whole_file;
+ extern int inplace;
+ extern int allowed_lull;
+ extern int delay_updates;
++extern int xfersum_type;
+ extern mode_t orig_umask;
+ extern struct stats stats;
+ extern char *tmpdir;
+@@ -61,6 +62,7 @@ extern char *basis_dir[MAX_BASIS_DIRS+1];
+ extern char sender_file_sum[MAX_DIGEST_LEN];
+ extern struct file_list *cur_flist, *first_flist, *dir_flist;
+ extern filter_rule_list daemon_filter_list;
++extern OFF_T preallocated_len;
+ 
+ static struct bitbag *delayed_bits = NULL;
+ static int phase = 0, redoing = 0;
+@@ -234,28 +236,32 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
+ 	static char file_sum1[MAX_DIGEST_LEN];
+ 	struct map_struct *mapbuf;
+ 	struct sum_struct sum;
++	int checksum_len;
+ 	int32 len;
+ 	OFF_T offset = 0;
+ 	OFF_T offset2;
+ 	char *data;
+ 	int32 i;
+ 	char *map = NULL;
+-#ifdef SUPPORT_PREALLOCATION
+-#ifdef PREALLOCATE_NEEDS_TRUNCATE
+-	OFF_T preallocated_len = 0;
+-#endif
+ 
++#ifdef SUPPORT_PREALLOCATION
+ 	if (preallocate_files && fd != -1 && total_size > 0 && (!inplace || total_size > size_r)) {
+ 		/* Try to preallocate enough space for file's eventual length.  Can
+ 		 * reduce fragmentation on filesystems like ext4, xfs, and NTFS. */
+-		if (do_fallocate(fd, 0, total_size) == 0) {
+-#ifdef PREALLOCATE_NEEDS_TRUNCATE
+-			preallocated_len = total_size;
+-#endif
+-		} else
++		if ((preallocated_len = do_fallocate(fd, 0, total_size)) < 0)
+ 			rsyserr(FWARNING, errno, "do_fallocate %s", full_fname(fname));
+-	}
++	} else
++#endif
++	if (inplace) {
++#ifdef HAVE_FTRUNCATE
++		/* The most compatible way to create a sparse file is to start with no length. */
++		if (sparse_files > 0 && whole_file && fd >= 0 && do_ftruncate(fd, 0) == 0)
++			preallocated_len = 0;
++		else
+ #endif
++			preallocated_len = size_r;
++	} else
++		preallocated_len = 0;
+ 
+ 	read_sum_head(f_in, &sum);
+ 
+@@ -269,7 +275,7 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
+ 	} else
+ 		mapbuf = NULL;
+ 
+-	sum_init(checksum_seed);
++	sum_init(xfersum_type, checksum_seed);
+ 
+ 	if (append_mode > 0) {
+ 		OFF_T j;
+@@ -317,7 +323,7 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
+ 
+ 			sum_update(data, i);
+ 
+-			if (fd != -1 && write_file(fd,data,i) != i)
++			if (fd != -1 && write_file(fd, 0, offset, data, i) != i)
+ 				goto report_write_error;
+ 			offset += i;
+ 			continue;
+@@ -347,37 +353,33 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
+ 
+ 		if (updating_basis_or_equiv) {
+ 			if (offset == offset2 && fd != -1) {
+-				OFF_T pos;
+-				if (flush_write_file(fd) < 0)
++				if (skip_matched(fd, offset, map, len) < 0)
+ 					goto report_write_error;
+ 				offset += len;
+-				if ((pos = do_lseek(fd, len, SEEK_CUR)) != offset) {
+-					rsyserr(FERROR_XFER, errno,
+-						"lseek of %s returned %s, not %s",
+-						full_fname(fname),
+-						big_num(pos), big_num(offset));
+-					exit_cleanup(RERR_FILEIO);
+-				}
+ 				continue;
+ 			}
+ 		}
+-		if (fd != -1 && map && write_file(fd, map, len) != (int)len)
++		if (fd != -1 && map && write_file(fd, 0, offset, map, len) != (int)len)
+ 			goto report_write_error;
+ 		offset += len;
+ 	}
+ 
+-	if (flush_write_file(fd) < 0)
+-		goto report_write_error;
++	if (fd != -1 && offset > 0) {
++		if (sparse_files > 0) {
++			if (sparse_end(fd, offset) != 0)
++				goto report_write_error;
++		} else if (flush_write_file(fd) < 0) {
++		    report_write_error:
++			rsyserr(FERROR_XFER, errno, "write failed on %s", full_fname(fname));
++			exit_cleanup(RERR_FILEIO);
++		}
++	}
+ 
+ #ifdef HAVE_FTRUNCATE
+ 	/* inplace: New data could be shorter than old data.
+ 	 * preallocate_files: total_size could have been an overestimate.
+ 	 *     Cut off any extra preallocated zeros from dest file. */
+-	if ((inplace
+-#ifdef PREALLOCATE_NEEDS_TRUNCATE
+-	  || preallocated_len > offset
+-#endif
+-	  ) && fd != -1 && do_ftruncate(fd, offset) < 0) {
++	if ((inplace || preallocated_len > offset) && fd != -1 && do_ftruncate(fd, offset) < 0) {
+ 		rsyserr(FERROR_XFER, errno, "ftruncate failed on %s",
+ 			full_fname(fname));
+ 	}
+@@ -386,15 +388,7 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
+ 	if (INFO_GTE(PROGRESS, 1))
+ 		end_progress(total_size);
+ 
+-	if (fd != -1 && offset > 0 && sparse_end(fd, offset) != 0) {
+-	    report_write_error:
+-		rsyserr(FERROR_XFER, errno, "write failed on %s",
+-			full_fname(fname));
+-		exit_cleanup(RERR_FILEIO);
+-	}
+-
+-	if (sum_end(file_sum1) != checksum_len)
+-		overflow_exit("checksum_len"); /* Impossible... */
++	checksum_len = sum_end(file_sum1);
+ 
+ 	if (mapbuf)
+ 		unmap_file(mapbuf);
+diff --git a/rsync.c b/rsync.c
+index f1404ce1..b82e5988 100644
+--- a/rsync.c
++++ b/rsync.c
+@@ -659,7 +659,7 @@ int finish_transfer(const char *fname, const char *fnametmp,
+ 	if (make_backups > 0 && overwriting_basis) {
+ 		int ok = make_backup(fname, False);
+ 		if (!ok)
+-			return 1;
++			exit_cleanup(RERR_FILEIO);
+ 		if (ok == 1 && fnamecmp == fname)
+ 			fnamecmp = get_backup_name(fname);
+ 	}
+diff --git a/rsync.h b/rsync.h
+index 6e1e1dd4..c51e8d3b 100644
+--- a/rsync.h
++++ b/rsync.h
+@@ -372,7 +372,7 @@ enum delret {
+ #include <utime.h>
+ #endif
+ 
+-#if defined HAVE_UTIMENSAT || defined HAVE_LUTIMES
++#if defined HAVE_UTIMENSAT || defined HAVE_LUTIMES || defined HAVE_SETATTRLIST
+ #define CAN_SET_SYMLINK_TIMES 1
+ #endif
+ 
+@@ -384,11 +384,17 @@ enum delret {
+ #define CAN_CHMOD_SYMLINK 1
+ #endif
+ 
+-#ifdef HAVE_UTIMENSAT
++#if defined HAVE_UTIMENSAT || defined HAVE_SETATTRLIST
++#define CAN_SET_NSEC 1
++#endif
++
++#ifdef CAN_SET_NSEC
+ #ifdef HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC
+ #define ST_MTIME_NSEC st_mtim.tv_nsec
+ #elif defined(HAVE_STRUCT_STAT_ST_MTIMENSEC)
+ #define ST_MTIME_NSEC st_mtimensec
++#elif defined(HAVE_STRUCT_STAT_ST_MTIMESPEC_TV_NSEC)
++#define ST_MTIME_NSEC st_mtimespec.tv_nsec
+ #endif
+ #endif
+ 
+@@ -856,6 +862,10 @@ struct map_struct {
+ 	int status;		/* first errno from read errors		*/
+ };
+ 
++#define NAME_IS_FILE		(0)    /* filter name as a file */
++#define NAME_IS_DIR		(1<<0) /* filter name as a dir */
++#define NAME_IS_XATTR		(1<<2) /* filter name as an xattr */
++
+ #define FILTRULE_WILD		(1<<0) /* pattern has '*', '[', and/or '?' */
+ #define FILTRULE_WILD2		(1<<1) /* pattern has '**' */
+ #define FILTRULE_WILD2_PREFIX	(1<<2) /* pattern starts with "**" */
+@@ -876,6 +886,7 @@ struct map_struct {
+ #define FILTRULE_RECEIVER_SIDE	(1<<17)/* rule applies to the receiving side */
+ #define FILTRULE_CLEAR_LIST	(1<<18)/* this item is the "!" token */
+ #define FILTRULE_PERISHABLE	(1<<19)/* perishable if parent dir goes away */
++#define FILTRULE_XATTR		(1<<20)/* rule only applies to xattr names */
+ 
+ #define FILTRULES_SIDES (FILTRULE_SENDER_SIDE | FILTRULE_RECEIVER_SIDE)
+ 
+diff --git a/rsync.yo b/rsync.yo
+index 09ee92f6..39a16fed 100644
+--- a/rsync.yo
++++ b/rsync.yo
+@@ -376,10 +376,11 @@ to the detailed description below for a complete description.  verb(
+  -J, --omit-link-times       omit symlinks from --times
+      --super                 receiver attempts super-user activities
+      --fake-super            store/recover privileged attrs using xattrs
+- -S, --sparse                handle sparse files efficiently
++ -S, --sparse                turn sequences of nulls into sparse blocks
+      --preallocate           allocate dest files before writing
+  -n, --dry-run               perform a trial run with no changes made
+  -W, --whole-file            copy files whole (w/o delta-xfer algorithm)
++     --checksum-choice=STR   choose the checksum algorithms
+  -x, --one-file-system       don't cross filesystem boundaries
+  -B, --block-size=SIZE       force a fixed checksum block-size
+  -e, --rsh=COMMAND           specify the remote shell to use
+@@ -413,7 +414,7 @@ to the detailed description below for a complete description.  verb(
+      --contimeout=SECONDS    set daemon connection timeout in seconds
+  -I, --ignore-times          don't skip files that match size and time
+      --size-only             skip files that match in size
+-     --modify-window=NUM     compare mod-times with reduced accuracy
++ -@, --modify-window=NUM     set the accuracy for mod-time comparisons
+  -T, --temp-dir=DIR          create temporary files in directory DIR
+  -y, --fuzzy                 find similar file for basis if no dest file
+      --compare-dest=DIR      also compare received files relative to DIR
+@@ -605,13 +606,23 @@ time to just looking for files that have changed in size.  This is useful
+ when starting to use rsync after using another mirroring system which may
+ not preserve timestamps exactly.
+ 
+-dit(bf(--modify-window)) When comparing two timestamps, rsync treats the
++dit(bf(-@, --modify-window)) When comparing two timestamps, rsync treats the
+ timestamps as being equal if they differ by no more than the modify-window
+-value.  This is normally 0 (for an exact match), but you may find it useful
+-to set this to a larger value in some situations.  In particular, when
+-transferring to or from an MS Windows FAT filesystem (which represents
+-times with a 2-second resolution), bf(--modify-window=1) is useful
+-(allowing times to differ by up to 1 second).
++value.  The default is 0, which matches just integer seconds.  If you specify a
++negative value (and the receiver is at least version 3.1.3) then nanoseconds
++will also be taken into account.  Specifying 1 is useful for copies to/from MS
++Windows FAT filesystems, because FAT represents times with a 2-second
++resolution (allowing times to differ from the original by up to 1 second).
++
++If you want all your transfers to default to comparing nanoseconds, you can
++create a ~/.popt file and put these lines in it:
++
++quote(tt(   rsync alias -a -a@-1))
++quote(tt(   rsync alias -t -t@-1))
++
++With that as the default, you'd need to specify bf(--modify-window=0) (aka
++bf(-@0)) to override it and ignore nanoseconds, e.g. if you're copying between
++ext3 and ext4, or if the receiving rsync is older than 3.1.3.
+ 
+ dit(bf(-c, --checksum)) This changes the way rsync checks if the files have
+ been changed and are in need of a transfer.  Without this option, rsync
+@@ -770,7 +781,7 @@ backup file goes and what (if any) suffix gets appended using the
+ bf(--backup-dir) and bf(--suffix) options.
+ 
+ Note that if you don't specify bf(--backup-dir), (1) the
+-bf(--omit-dir-times) option will be implied, and (2) if bf(--delete) is
++bf(--omit-dir-times) option will be forced on, and (2) if bf(--delete) is
+ also in effect (without bf(--delete-excluded)), rsync will add a "protect"
+ filter-rule for the backup suffix to the end of all your existing excludes
+ (e.g. bf(-f "P *~")).  This will prevent previously backed-up files from being
+@@ -862,9 +873,7 @@ the same or longer than the size on the sender, the file is skipped.  This
+ does not interfere with the updating of a file's non-content attributes
+ (e.g. permissions, ownership, etc.) when the file does not need to be
+ transferred, nor does it affect the updating of any non-regular files.
+-Implies bf(--inplace),
+-but does not conflict with bf(--sparse) (since it is always extending a
+-file's length).
++Implies bf(--inplace).
+ 
+ The use of bf(--append) can be dangerous if you aren't 100% sure that the files
+ that are longer have only grown by the appending of data onto the end.  You
+@@ -1109,9 +1118,27 @@ super-user copies all namespaces except system.*.  A normal user only copies
+ the user.* namespace.  To be able to backup and restore non-user namespaces as
+ a normal user, see the bf(--fake-super) option.
+ 
+-Note that this option does not copy rsyncs special xattr values (e.g. those
+-used by bf(--fake-super)) unless you repeat the option (e.g. -XX).  This
+-"copy all xattrs" mode cannot be used with bf(--fake-super).
++The above name filtering can be overridden by using one or more filter options
++with the bf(x) modifier. When you specify an xattr-affecting filter rule, rsync
++requires that you do your own system/user filtering, as well as any additional
++filtering for what xattr names are copied and what names are allowed to be
++deleted.  For example, to skip the system namespace, you could specify:
++
++quote(--filter='-x system.*')
++
++To skip all namespaces except the user namespace, you could specify a
++negated-user match:
++
++quote(--filter='-x! user.*')
++
++To prevent any attributes from being deleted, you could specify a receiver-only
++rule that excludes all names:
++
++quote(--filter='-xr *')
++
++Note that the bf(-X) option does not copy rsync's special xattr values (e.g.
++those used by bf(--fake-super)) unless you repeat the option (e.g. -XX).
++This "copy all xattrs" mode cannot be used with bf(--fake-super).
+ 
+ dit(bf(--chmod)) This option tells rsync to apply one or more
+ comma-separated "chmod" modes to the permission of the files in the
+@@ -1241,20 +1268,30 @@ This option is overridden by both bf(--super) and bf(--no-super).
+ See also the "fake super" setting in the daemon's rsyncd.conf file.
+ 
+ dit(bf(-S, --sparse)) Try to handle sparse files efficiently so they take
+-up less space on the destination.  Conflicts with bf(--inplace) because it's
+-not possible to overwrite data in a sparse fashion.
++up less space on the destination.  If combined with bf(--inplace) the
++file created might not end up with sparse blocks with some combinations
++of kernel version and/or filesystem type.  If bf(--whole-file) is in
++effect (e.g. for a local copy) then it will always work because rsync
++truncates the file prior to writing out the updated version.
++
++Note that versions of rsync older than 3.1.3 will reject the combination of
++bf(--sparse) and bf(--inplace).
+ 
+ dit(bf(--preallocate)) This tells the receiver to allocate each destination
+-file to its eventual size before writing data to the file.  Rsync will only use
+-the real filesystem-level preallocation support provided by Linux's
++file to its eventual size before writing data to the file.  Rsync will only
++use the real filesystem-level preallocation support provided by Linux's
+ bf(fallocate)(2) system call or Cygwin's bf(posix_fallocate)(3), not the slow
+-glibc implementation that writes a zero byte into each block.
++glibc implementation that writes a null byte into each block.
+ 
+ Without this option, larger files may not be entirely contiguous on the
+ filesystem, but with this option rsync will probably copy more slowly.  If the
+ destination is not an extent-supporting filesystem (such as ext4, xfs, NTFS,
+ etc.), this option may have no positive effect at all.
+ 
++If combined with bf(--sparse), the file will only have sparse blocks (as
++opposed to allocated sequences of null bytes) if the kernel version and
++filesystem type support creating holes in the allocated data.
++
+ dit(bf(-n, --dry-run)) This makes rsync perform a trial run that doesn't
+ make any changes (and produces mostly the same output as a real run).  It
+ is most commonly used in combination with the bf(-v, --verbose) and/or
+@@ -1270,14 +1307,27 @@ the "bytes sent", "bytes received", "literal data", and "matched data"
+ statistics are too small, and the "speedup" value is equivalent to a run
+ where no file transfers were needed.
+ 
+-dit(bf(-W, --whole-file)) With this option rsync's delta-transfer algorithm
+-is not used and the whole file is sent as-is instead.  The transfer may be
++dit(bf(-W, --whole-file)) This option disables rsync's delta-transfer algorithm,
++which causes all transferred files to be sent whole.  The transfer may be
+ faster if this option is used when the bandwidth between the source and
+ destination machines is higher than the bandwidth to disk (especially when the
+ "disk" is actually a networked filesystem).  This is the default when both
+ the source and destination are specified as local paths, but only if no
+ batch-writing option is in effect.
+ 
++dit(bf(--checksum-choice=STR)) This option overrides the checksum algoriths.
++If one algorithm name is specified, it is used for both the transfer checksums
++and (assuming bf(--checksum) is specifed) the pre-transfer checksumming. If two
++comma-separated names are supplied, the first name affects the transfer
++checksums, and the second name affects the pre-transfer checksumming.
++
++The algorithm choices are "auto", "md4", "md5", and "none".  If "none" is
++specified for the first name, the bf(--whole-file) option is forced on and no
++checksum verification is performed on the transferred data.  If "none" is
++specified for the second name, the bf(--checksum) option cannot be used. The
++"auto" option is the default, where rsync bases its algorithm choice on the
++protocol version (for backward compatibility with older rsync versions).
++
+ dit(bf(-x, --one-file-system)) This tells rsync to avoid crossing a
+ filesystem boundary when recursing.  This does not limit the user's ability
+ to specify items to copy from multiple filesystems, just rsync's recursion
+@@ -1855,7 +1905,7 @@ ownership (such as OS X's "Ignore ownership on this volume" option).
+ 
+ Beginning in version 2.6.4, multiple bf(--link-dest) directories may be
+ provided, which will cause rsync to search the list in the order specified
+-for an exact match.
++for an exact match (there is a limit of 20 such directories).
+ If a match is found that differs only in attributes, a local copy is made
+ and the attributes updated.
+ If a match is not found, a basis file from one of the em(DIR)s will be
+@@ -2806,16 +2856,20 @@ itemization(
+ )
+ 
+ Note that, when using the bf(--recursive) (bf(-r)) option (which is implied by
+-bf(-a)), every subcomponent of every path is visited from the top down, so
+-include/exclude patterns get applied recursively to each subcomponent's
+-full name (e.g. to include "/foo/bar/baz" the subcomponents "/foo" and
+-"/foo/bar" must not be excluded).
+-The exclude patterns actually short-circuit the directory traversal stage
+-when rsync finds the files to send.  If a pattern excludes a particular
+-parent directory, it can render a deeper include pattern ineffectual
+-because rsync did not descend through that excluded section of the
+-hierarchy.  This is particularly important when using a trailing '*' rule.
+-For instance, this won't work:
++bf(-a)), every subdir component of every path is visited left to right, with
++each directory having a chance for exclusion before its content.  In this way
++include/exclude patterns are applied recursively to the pathname of each node
++in the filesystem's tree (those inside the transfer).  The exclude patterns
++short-circuit the directory traversal stage as rsync finds the files to send.
++
++For instance, to include "/foo/bar/baz", the directories "/foo" and "/foo/bar"
++must not be excluded.  Excluding one of those parent directories prevents the
++examination of its content, cutting off rsync's recursion into those paths and
++rendering the include for "/foo/bar/baz" ineffectual (since rsync can't match
++something it never sees in the cut-off section of the directory hierarchy).
++
++The concept path exclusion is particularly important when using a trailing '*'
++rule.  For instance, this won't work:
+ 
+ quote(
+ tt(+ /some/path/this-file-will-not-be-found)nl()
+@@ -2890,6 +2944,10 @@ itemization(
+   option's default rules that exclude things like "CVS" and "*.o" are
+   marked as perishable, and will not prevent a directory that was removed
+   on the source from being deleted on the destination.
++  it() An bf(x) indicates that a rule affects xattr names in xattr copy/delete
++  operations (and is thus ignored when matching file/dir names). If no
++  xattr-matching rules are specified, a default xattr filtering rule is
++  used (see the bf(--xattrs) option).
+ )
+ 
+ manpagesection(MERGE-FILE FILTER RULES)
+diff --git a/rsyncd.conf.yo b/rsyncd.conf.yo
+index 69154071..b8845e9d 100644
+--- a/rsyncd.conf.yo
++++ b/rsyncd.conf.yo
+@@ -186,8 +186,8 @@ transfer.  For example, specifying "/var/rsync/./module1" will chroot to the
+ had omitted the dot-dir, the chroot would have used the whole path, and the
+ inside-chroot path would have been "/".
+ 
+-When "use chroot" is false or the inside-chroot path is not "/", rsync will:
+-(1) munge symlinks by
++When both "use chroot" and "daemon chroot" are false, OR the inside-chroot path
++of "use chroot" is not "/", rsync will: (1) munge symlinks by
+ default for security reasons (see "munge symlinks" for a way to turn this
+ off, but only if you trust your users), (2) substitute leading slashes in
+ absolute paths with the module's path (so that options such as
+@@ -206,12 +206,20 @@ should protect them through your OS's normal user/group or ACL settings (to
+ prevent the rsync module's user from being able to change them), and then
+ hide them from the user's view via "exclude" (see how in the discussion of
+ that parameter).  At that point it will be safe to enable the mapping of users
+-and groups by name using this "numeric ids" daemon parameter.
++and groups by name using the "numeric ids" daemon parameter (see below).
+ 
+ Note also that you are free to setup custom user/group information in the
+ chroot area that is different from your normal system.  For example, you
+ could abbreviate the list of users and groups.
+ 
++dit(bf(daemon chroot)) This parameter specifies a path to which the daemon will
++chroot before beginning communication with clients. Module paths (and any "use
++chroot" settings) will then be related to this one. This lets you choose if you
++want the whole daemon to be chrooted (with this setting), just the transfers to
++be chrooted (with "use chroot"), or both.  Keep in mind that the "daemon chroot"
++area may need various OS/lib/etc files installed to allow the daemon to function.
++By default the daemon runs without any chrooting.
++
+ dit(bf(numeric ids)) Enabling this parameter disables the mapping
+ of users and groups by name for the current daemon module.  This prevents
+ the daemon from trying to load any user/group-related files or libraries.
+@@ -234,7 +242,8 @@ all symlinks in the same way as the (non-daemon-affecting)
+ bf(--munge-links) command-line option (using a method described below).
+ This should help protect your files from user trickery when
+ your daemon module is writable.  The default is disabled when "use chroot"
+-is on and the inside-chroot path is "/", otherwise it is enabled.
++is on with an inside-chroot path of "/", OR if "daemon chroot" is on,
++otherwise it is enabled.
+ 
+ If you disable this parameter on a daemon that is not read-only, there
+ are tricks that a user can play with uploaded symlinks to access
+@@ -316,6 +325,17 @@ is daemon.  This setting has no effect if the "log file" setting is a
+ non-empty string (either set in the per-modules settings, or inherited
+ from the global settings).
+ 
++dit(bf(syslog tag)) This parameter allows you to specify the syslog
++tag to use when logging messages from the rsync daemon. The default is
++"rsyncd".  This setting has no effect if the "log file" setting is a
++non-empty string (either set in the per-modules settings, or inherited
++from the global settings).
++
++For example, if you wanted each authenticated user's name to be
++included in the syslog tag, you could do something like this:
++
++verb(    syslog tag = rsyncd.%RSYNC_USER_NAME%)
++
+ dit(bf(max verbosity)) This parameter allows you to control
+ the maximum amount of verbose information that you'll allow the daemon to
+ generate (since the information goes into the log file). The default is 1,
+@@ -348,6 +368,9 @@ attempted downloads will fail. If "write only" is false then downloads
+ will be possible if file permissions on the daemon side allow them.  The
+ default is for this parameter to be disabled.
+ 
++Helpful hint: you probably want to specify "refuse options = delete" for a
++write-only module.
++
+ dit(bf(list)) This parameter determines whether this module is
+ listed when the client asks for a listing of available modules.  In addition,
+ if this is false, the daemon will pretend the module does not exist
+@@ -381,6 +404,14 @@ supplementary groups.  The default for a non-super-user is to not change any
+ group attributes (and indeed, your OS may not allow a non-super-user to try to
+ change their group settings).
+ 
++dit(bf(daemon uid)) This parameter specifies a uid under which the daemon will
++run. The daemon usually runs as user root, and when this is left unset the user
++is left unchanged. See also the "uid" parameter.
++
++dit(bf(daemon gid)) This parameter specifies a gid under which the daemon will
++run. The daemon usually runs as group root, and when this is left unset, the
++group is left unchanged. See also the "gid" parameter.
++
+ dit(bf(fake super)) Setting "fake super = yes" for a module causes the
+ daemon side to behave as if the bf(--fake-super) command-line option had
+ been specified.  This allows the full attributes of a file to be stored
+@@ -492,6 +523,13 @@ group "guest").  Any other user who is in group "rsync" will get read-only
+ access.  Finally, users susan, joe, and sam get the ro/rw setting of the
+ module, but only if the user didn't match an earlier group-matching rule.
+ 
++If you need to specify a user or group name with a space in it, start your list
++with a comma to indicate that the list should only be split on commas (though
++leading and trailing whitespace will also be removed, and empty entries are
++just ignored).  For example:
++
++verb(  auth users = , joe:deny, @Some Group:deny, admin:rw, @RO Group:ro )
++
+ See the description of the secrets file for how you can have per-user passwords
+ as well as per-group passwords.  It also explains how a user can authenticate
+ using their user password or (when applicable) a group password, depending on
+@@ -534,9 +572,9 @@ than the one that the rsync daemon is running under.  If "strict modes" is
+ false, the check is not performed.  The default is true.  This parameter
+ was added to accommodate rsync running on the Windows operating system.
+ 
+-dit(bf(hosts allow)) This parameter allows you to specify a
+-list of patterns that are matched against a connecting clients
+-hostname and IP address. If none of the patterns match then the
++dit(bf(hosts allow)) This parameter allows you to specify a list of comma-
++and/or whitespace-separated patterns that are matched against a connecting
++client's hostname and IP address.  If none of the patterns match, then the
+ connection is rejected.
+ 
+ Each pattern can be in one of five forms:
+@@ -580,9 +618,9 @@ connect.
+ 
+ The default is no "hosts allow" parameter, which means all hosts can connect.
+ 
+-dit(bf(hosts deny)) This parameter allows you to specify a
+-list of patterns that are matched against a connecting clients
+-hostname and IP address. If the pattern matches then the connection is
++dit(bf(hosts deny)) This parameter allows you to specify a list of comma-
++and/or whitespace-separated patterns that are matched against a connecting
++clients hostname and IP address. If the pattern matches then the connection is
+ rejected. See the "hosts allow" parameter for more information.
+ 
+ The default is no "hosts deny" parameter, which means all hosts can connect.
+@@ -649,7 +687,7 @@ quote(itemization(
+   it() %b the number of bytes actually transferred
+   it() %B the permission bits of the file (e.g. rwxrwxrwt)
+   it() %c the total size of the block checksums received for the basis file (only when sending)
+-  it() %C the full-file MD5 checksum if bf(--checksum) is enabled or a file was transferred (only for protocol 30 or above).
++  it() %C the full-file checksum if it is known for the file. For older rsync protocols/versions, the checksum was salted, and is thus not a useful value (and is not displayed when that is the case). For the checksum to output for a file, either the bf(--checksum) option must be in-effect or the file must have been transferred without a salted checksum being used. See the bf(--checksum-choice) option for a way to choose the algorithm.
+   it() %f the filename (long form on sender; no trailing "/")
+   it() %G the gid of the file (decimal) or "DEFAULT"
+   it() %h the remote host name (only available for a daemon)
+diff --git a/support/rsyncstats b/support/rsyncstats
+index e770b9dd..ab7246d3 100755
+--- a/support/rsyncstats
++++ b/support/rsyncstats
+@@ -270,27 +270,27 @@ foreach $hour (sort keys %xfertbytes) {
+ exit(0);
+ 
+ sub datecompare {
+-    $a gt $b;
++    $a cmp $b;
+ }
+ 
+ sub domnamcompare {
+ 
+    $sdiff = length($a) - length($b);
+-   ($sdiff < 0) ? -1 : ($sdiff > 0) ? 1 : ($a lt $b) ? -1 : ($a gt $b) ? 1 : 0;
++   ($sdiff < 0) ? -1 : ($sdiff > 0) ? 1 : $a cmp $b;
+ 
+ }
+ 
+ sub bytecompare {
+ 
+    $bdiff = $groupbytes{$b} - $groupbytes{$a};
+-   ($bdiff < 0) ? -1 : ($bdiff > 0) ? 1 : ($a lt $b) ? -1 : ($a gt $b) ? 1 : 0;
++   ($bdiff < 0) ? -1 : ($bdiff > 0) ? 1 : $a cmp $b;
+ 
+ }
+ 
+ sub faccompare {
+ 
+    $fdiff = $fac{$b} - $fac{$a};
+-   ($fdiff < 0) ? -1 : ($fdiff > 0) ? 1 : ($a lt $b) ? -1 : ($a gt $b) ? 1 : 0;
++   ($fdiff < 0) ? -1 : ($fdiff > 0) ? 1 : $a cmp $b;
+ 
+ }
+ 
+diff --git a/syscall.c b/syscall.c
+index ecca2f18..dae92bc2 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -38,9 +38,21 @@ extern int am_root;
+ extern int am_sender;
+ extern int read_only;
+ extern int list_only;
++extern int inplace;
++extern int preallocate_files;
+ extern int preserve_perms;
+ extern int preserve_executability;
+ 
++#ifndef S_BLKSIZE
++# if defined hpux || defined __hpux__ || defined __hpux
++#  define S_BLKSIZE 1024
++# elif defined _AIX && defined _I386
++#  define S_BLKSIZE 4096
++# else
++#  define S_BLKSIZE 512
++# endif
++#endif
++
+ #define RETURN_ERROR_IF(x,e) \
+ 	do { \
+ 		if (x) { \
+@@ -348,6 +360,25 @@ OFF_T do_lseek(int fd, OFF_T offset, int whence)
+ #endif
+ }
+ 
++#ifdef HAVE_SETATTRLIST
++int do_setattrlist_times(const char *fname, time_t modtime, uint32 mod_nsec)
++{
++	struct attrlist attrList;
++	struct timespec ts;
++
++	if (dry_run) return 0;
++	RETURN_ERROR_IF_RO_OR_LO;
++
++	ts.tv_sec = modtime;
++	ts.tv_nsec = mod_nsec;
++
++	memset(&attrList, 0, sizeof attrList);
++	attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
++	attrList.commonattr = ATTR_CMN_MODTIME;
++	return setattrlist(fname, &attrList, &ts, sizeof ts, FSOPT_NOFOLLOW);
++}
++#endif
++
+ #ifdef HAVE_UTIMENSAT
+ int do_utimensat(const char *fname, time_t modtime, uint32 mod_nsec)
+ {
+@@ -423,27 +454,80 @@ int do_utime(const char *fname, time_t modtime, UNUSED(uint32 mod_nsec))
+ #endif
+ 
+ #ifdef SUPPORT_PREALLOCATION
+-int do_fallocate(int fd, OFF_T offset, OFF_T length)
+-{
+ #ifdef FALLOC_FL_KEEP_SIZE
+ #define DO_FALLOC_OPTIONS FALLOC_FL_KEEP_SIZE
+ #else
+ #define DO_FALLOC_OPTIONS 0
+ #endif
++
++OFF_T do_fallocate(int fd, OFF_T offset, OFF_T length)
++{
++	int opts = inplace || preallocate_files ? 0 : DO_FALLOC_OPTIONS;
++	int ret;
+ 	RETURN_ERROR_IF(dry_run, 0);
+ 	RETURN_ERROR_IF_RO_OR_LO;
++	if (length & 1) /* make the length not match the desired length */
++		length++;
++	else
++		length--;
+ #if defined HAVE_FALLOCATE
+-	return fallocate(fd, DO_FALLOC_OPTIONS, offset, length);
++	ret = fallocate(fd, opts, offset, length);
+ #elif defined HAVE_SYS_FALLOCATE
+-	return syscall(SYS_fallocate, fd, DO_FALLOC_OPTIONS, (loff_t)offset, (loff_t)length);
++	ret = syscall(SYS_fallocate, fd, opts, (loff_t)offset, (loff_t)length);
+ #elif defined HAVE_EFFICIENT_POSIX_FALLOCATE
+-	return posix_fallocate(fd, offset, length);
++	ret = posix_fallocate(fd, offset, length);
+ #else
+ #error Coding error in SUPPORT_PREALLOCATION logic.
+ #endif
++	if (ret < 0)
++		return ret;
++	if (opts == 0) {
++		STRUCT_STAT st;
++		if (do_fstat(fd, &st) < 0)
++			return length;
++		return st.st_blocks * S_BLKSIZE;
++	}
++	return 0;
+ }
+ #endif
+ 
++/* Punch a hole at pos for len bytes. The current file position must be at pos and will be
++ * changed to be at pos + len. */
++int do_punch_hole(int fd, UNUSED(OFF_T pos), int len)
++{
++#ifdef HAVE_FALLOCATE
++# ifdef HAVE_FALLOC_FL_PUNCH_HOLE
++	if (fallocate(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, pos, len) == 0) {
++		if (do_lseek(fd, len, SEEK_CUR) != pos + len)
++			return -1;
++		return 0;
++	}
++# endif
++# ifdef HAVE_FALLOC_FL_ZERO_RANGE
++	if (fallocate(fd, FALLOC_FL_ZERO_RANGE, pos, len) == 0) {
++		if (do_lseek(fd, len, SEEK_CUR) != pos + len)
++			return -1;
++		return 0;
++	}
++# endif
++#endif
++	{
++		char zeros[4096];
++		memset(zeros, 0, sizeof zeros);
++		while (len > 0) {
++			int chunk = len > (int)sizeof zeros ? (int)sizeof zeros : len;
++			int wrote = write(fd, zeros, chunk);
++			if (wrote <= 0) {
++				if (wrote < 0 && errno == EINTR)
++					continue;
++				return -1;
++			}
++			len -= wrote;
++		}
++	}
++	return 0;
++}
++
+ int do_open_nofollow(const char *pathname, int flags)
+ {
+ #ifndef O_NOFOLLOW
+diff --git a/t_stub.c b/t_stub.c
+index 6002250c..fc1ee3b9 100644
+--- a/t_stub.c
++++ b/t_stub.c
+@@ -21,11 +21,11 @@
+ 
+ #include "rsync.h"
+ 
++int inplace = 0;
+ int modify_window = 0;
+ int preallocate_files = 0;
+ int protect_args = 0;
+ int module_id = -1;
+-int checksum_len = 0;
+ int relative_paths = 0;
+ int module_dirlen = 0;
+ int preserve_acls = 0;
+@@ -97,3 +97,8 @@ filter_rule_list daemon_filter_list;
+ {
+ 	return "tester";
+ }
++
++ int csum_len_for_type(int cst)
++{
++	return cst ? 16 : 1;
++}
+diff --git a/testsuite/xattrs.test b/testsuite/xattrs.test
+index 06afcba0..f7d9a6df 100644
+--- a/testsuite/xattrs.test
++++ b/testsuite/xattrs.test
+@@ -127,8 +127,10 @@ esac
+ 
+ xls $dirs $files >"$scratchdir/xattrs.txt"
+ 
++XFILT='-f-x_system.* -f-x_security.*'
++
+ # OK, let's try a simple xattr copy.
+-checkit "$RSYNC -avX $dashH --super . '$chkdir/'" "$fromdir" "$chkdir"
++checkit "$RSYNC -avX $XFILT $dashH --super . '$chkdir/'" "$fromdir" "$chkdir"
+ 
+ cd "$chkdir"
+ xls $dirs $files | diff $diffopt "$scratchdir/xattrs.txt" -
+@@ -142,7 +144,7 @@ if [ "$dashH" ]; then
+     done
+ fi
+ 
+-checkit "$RSYNC -aiX $dashH --super $altDest=../chk . ../to" "$fromdir" "$todir"
++checkit "$RSYNC -aiX $XFILT $dashH --super $altDest=../chk . ../to" "$fromdir" "$todir"
+ 
+ cd "$todir"
+ xls $dirs $files | diff $diffopt "$scratchdir/xattrs.txt" -
+@@ -156,7 +158,7 @@ xset user.nice 'this is nice, but different' file1
+ 
+ xls $dirs $files >"$scratchdir/xattrs.txt"
+ 
+-checkit "$RSYNC -aiX $dashH --fake-super --link-dest=../chk . ../to" "$chkdir" "$todir"
++checkit "$RSYNC -aiX $XFILT $dashH --fake-super --link-dest=../chk . ../to" "$chkdir" "$todir"
+ 
+ cd "$todir"
+ xls $dirs $files | diff $diffopt "$scratchdir/xattrs.txt" -
+@@ -186,7 +188,7 @@ cd "$fromdir"
+ rm -rf "$todir"
+ 
+ # When run by a non-root tester, this checks if no-user-perm files/dirs can be copied.
+-checkit "$RSYNC -aiX $dashH --fake-super --chmod=a= . ../to" "$chkdir" "$todir" # 2>"$scratchdir/errors.txt"
++checkit "$RSYNC -aiX $XFILT $dashH --fake-super --chmod=a= . ../to" "$chkdir" "$todir" # 2>"$scratchdir/errors.txt"
+ 
+ cd "$todir"
+ xls $dirs $files | diff $diffopt "$scratchdir/xattrs.txt" -
+@@ -202,7 +204,7 @@ $RSYNC -aX file1 ../lnk/
+ 
+ xls file1 file2 >"$scratchdir/xattrs.txt"
+ 
+-checkit "$RSYNC -aiiX $dashH $altDest=../lnk . ../to" "$chkdir" "$todir"
++checkit "$RSYNC -aiiX $XFILT $dashH $altDest=../lnk . ../to" "$chkdir" "$todir"
+ 
+ [ "$dashH" ] && rm ../lnk/extra-link
+ 
+@@ -215,7 +217,7 @@ rm "$todir/file2"
+ echo extra >file1
+ $RSYNC -aX . ../chk/
+ 
+-checkit "$RSYNC -aiiX . ../to" "$chkdir" "$todir"
++checkit "$RSYNC -aiiX $XFILT . ../to" "$chkdir" "$todir"
+ 
+ cd "$todir"
+ xls file1 file2 | diff $diffopt "$scratchdir/xattrs.txt" -
+diff --git a/tls.c b/tls.c
+index 45d1e109..d5a2896c 100644
+--- a/tls.c
++++ b/tls.c
+@@ -51,6 +51,8 @@ int link_owner = 0;
+ int nsec_times = 0;
+ int preserve_perms = 0;
+ int preserve_executability = 0;
++int preallocate_files = 0;
++int inplace = 0;
+ 
+ #ifdef SUPPORT_XATTRS
+ 
+diff --git a/trimslash.c b/trimslash.c
+index 207eaf2e..5db6f3e1 100644
+--- a/trimslash.c
++++ b/trimslash.c
+@@ -28,6 +28,8 @@ int read_only = 1;
+ int list_only = 0;
+ int preserve_perms = 0;
+ int preserve_executability = 0;
++int preallocate_files = 0;
++int inplace = 0;
+ 
+ int
+ main(int argc, char **argv)
+diff --git a/util.c b/util.c
+index baee467c..d50900c8 100644
+--- a/util.c
++++ b/util.c
+@@ -128,6 +128,16 @@ int set_modtime(const char *fname, time_t modtime, uint32 mod_nsec, mode_t mode)
+ 	}
+ 
+ 	switch (switch_step) {
++#ifdef HAVE_SETATTRLIST
++#include "case_N.h"
++		if (do_setattrlist_times(fname, modtime, mod_nsec) == 0)
++			break;
++		if (errno != ENOSYS)
++			return -1;
++		switch_step++;
++		/* FALLTHROUGH */
++#endif
++
+ #ifdef HAVE_UTIMENSAT
+ #include "case_N.h"
+ 		if (do_utimensat(fname, modtime, mod_nsec) == 0)
+@@ -323,9 +333,7 @@ int copy_file(const char *source, const char *dest, int ofd, mode_t mode)
+ 	int ifd;
+ 	char buf[1024 * 8];
+ 	int len;   /* Number of bytes read into `buf'. */
+-#ifdef PREALLOCATE_NEEDS_TRUNCATE
+-	OFF_T preallocated_len = 0, offset = 0;
+-#endif
++	OFF_T prealloc_len = 0, offset = 0;
+ 
+ 	if ((ifd = do_open(source, O_RDONLY, 0)) < 0) {
+ 		int save_errno = errno;
+@@ -365,11 +373,8 @@ int copy_file(const char *source, const char *dest, int ofd, mode_t mode)
+ 		if (do_fstat(ifd, &srcst) < 0)
+ 			rsyserr(FWARNING, errno, "fstat %s", full_fname(source));
+ 		else if (srcst.st_size > 0) {
+-			if (do_fallocate(ofd, 0, srcst.st_size) == 0) {
+-#ifdef PREALLOCATE_NEEDS_TRUNCATE
+-				preallocated_len = srcst.st_size;
+-#endif
+-			} else
++			prealloc_len = do_fallocate(ofd, 0, srcst.st_size);
++			if (prealloc_len < 0)
+ 				rsyserr(FWARNING, errno, "do_fallocate %s", full_fname(dest));
+ 		}
+ 	}
+@@ -384,9 +389,7 @@ int copy_file(const char *source, const char *dest, int ofd, mode_t mode)
+ 			errno = save_errno;
+ 			return -1;
+ 		}
+-#ifdef PREALLOCATE_NEEDS_TRUNCATE
+ 		offset += len;
+-#endif
+ 	}
+ 
+ 	if (len < 0) {
+@@ -403,15 +406,13 @@ int copy_file(const char *source, const char *dest, int ofd, mode_t mode)
+ 			full_fname(source));
+ 	}
+ 
+-#ifdef PREALLOCATE_NEEDS_TRUNCATE
+ 	/* Source file might have shrunk since we fstatted it.
+ 	 * Cut off any extra preallocated zeros from dest file. */
+-	if (offset < preallocated_len && do_ftruncate(ofd, offset) < 0) {
++	if (offset < prealloc_len && do_ftruncate(ofd, offset) < 0) {
+ 		/* If we fail to truncate, the dest file may be wrong, so we
+ 		 * must trigger the "partial transfer" error. */
+ 		rsyserr(FERROR_XFER, errno, "ftruncate %s", full_fname(dest));
+ 	}
+-#endif
+ 
+ 	if (close(ofd) < 0) {
+ 		int save_errno = errno;
+@@ -800,6 +801,41 @@ void strlower(char *s)
+ 	}
+ }
+ 
++/**
++ * Split a string into tokens based (usually) on whitespace & commas.  If the
++ * string starts with a comma (after skipping any leading whitespace), then
++ * splitting is done only on commas. No empty tokens are ever returned. */
++char *conf_strtok(char *str)
++{
++	static int commas_only = 0;
++
++	if (str) {
++		while (isSpace(str)) str++;
++		if (*str == ',') {
++			commas_only = 1;
++			str++;
++		} else
++			commas_only = 0;
++	}
++
++	while (commas_only) {
++		char *end, *tok = strtok(str, ",");
++		if (!tok)
++			return NULL;
++		/* Trim just leading and trailing whitespace. */
++		while (isSpace(tok))
++			tok++;
++		end = tok + strlen(tok);
++		while (end > tok && isSpace(end-1))
++			*--end = '\0';
++		if (*tok)
++			return tok;
++		str = NULL;
++	}
++
++	return strtok(str, " ,\t\r\n");
++}
++
+ /* Join strings p1 & p2 into "dest" with a guaranteed '/' between them.  (If
+  * p1 ends with a '/', no extra '/' is inserted.)  Returns the length of both
+  * strings + 1 (if '/' was inserted), regardless of whether the null-terminated
+@@ -1324,15 +1360,20 @@ char *timestring(time_t t)
+  *
+  * @retval -1 if the 2nd is later
+  **/
+-int cmp_time(time_t file1, time_t file2)
++int cmp_time(time_t f1_sec, unsigned long f1_nsec, time_t f2_sec, unsigned long f2_nsec)
+ {
+-	if (file2 > file1) {
++	if (f2_sec > f1_sec) {
+ 		/* The final comparison makes sure that modify_window doesn't overflow a
+-		 * time_t, which would mean that file2 must be in the equality window. */
+-		if (!modify_window || (file2 > file1 + modify_window && file1 + modify_window > file1))
++		 * time_t, which would mean that f2_sec must be in the equality window. */
++		if (modify_window <= 0 || (f2_sec > f1_sec + modify_window && f1_sec + modify_window > f1_sec))
++			return -1;
++	} else if (f1_sec > f2_sec) {
++		if (modify_window <= 0 || (f1_sec > f2_sec + modify_window && f2_sec + modify_window > f2_sec))
++			return 1;
++	} else if (modify_window < 0) {
++		if (f2_nsec > f1_nsec)
+ 			return -1;
+-	} else if (file1 > file2) {
+-		if (!modify_window || (file1 > file2 + modify_window && file2 + modify_window > file2))
++		else if (f1_nsec > f2_nsec)
+ 			return 1;
+ 	}
+ 	return 0;
+diff --git a/util2.c b/util2.c
+index cc368af9..a892e518 100644
+--- a/util2.c
++++ b/util2.c
+@@ -25,8 +25,6 @@
+ #include "itypes.h"
+ #include "inums.h"
+ 
+-extern int checksum_len;
+-
+ /**
+  * Sleep for a specified number of milliseconds.
+  *
+@@ -79,10 +77,11 @@ void *_realloc_array(void *ptr, unsigned int size, size_t num)
+ 	return realloc(ptr, size * num);
+ }
+ 
+-const char *sum_as_hex(const char *sum)
++const char *sum_as_hex(int csum_type, const char *sum)
+ {
+ 	static char buf[MAX_DIGEST_LEN*2+1];
+ 	int i, x1, x2;
++	int checksum_len = csum_len_for_type(csum_type);
+ 	char *c = buf + checksum_len*2;
+ 
+ 	assert(c - buf < (int)sizeof buf);
+diff --git a/xattrs.c b/xattrs.c
+index 57833e56..68305d75 100644
+--- a/xattrs.c
++++ b/xattrs.c
+@@ -37,6 +37,7 @@ extern int preserve_links;
+ extern int preserve_devices;
+ extern int preserve_specials;
+ extern int checksum_seed;
++extern int saw_xattr_filter;
+ 
+ #define RSYNC_XAL_INITIAL 5
+ #define RSYNC_XAL_LIST_INITIAL 100
+@@ -79,11 +80,28 @@ typedef struct {
+ 	int num;
+ } rsync_xa;
+ 
++struct _rsync_xa_list;
++
++typedef struct _rsync_xa_list_ref {
++	struct _rsync_xa_list_ref *next;
++	int ndx;
++} rsync_xa_list_ref;
++
++typedef struct _rsync_xa_list {
++	int ndx;
++	int64 key;
++	item_list xa_items;
++} rsync_xa_list;
++
+ static size_t namebuf_len = 0;
+ static char *namebuf = NULL;
+ 
+-static item_list empty_xattr = EMPTY_ITEM_LIST;
++static const rsync_xa_list empty_xa_list = {
++	.xa_items = EMPTY_ITEM_LIST,
++};
++static const item_list empty_xattr = EMPTY_ITEM_LIST;
+ static item_list rsync_xal_l = EMPTY_ITEM_LIST;
++static struct hashtable *rsync_xal_h = NULL;
+ 
+ static size_t prior_xattr_count = (size_t)-1;
+ 
+@@ -144,7 +162,7 @@ static ssize_t get_xattr_names(const char *fname)
+ 			arg = namebuf_len;
+ 		  got_error:
+ 			rsyserr(FERROR_XFER, errno,
+-				"get_xattr_names: llistxattr(\"%s\",%s) failed",
++				"get_xattr_names: llistxattr(%s,%s) failed",
+ 				full_fname(fname), big_num(arg));
+ 			return -1;
+ 		}
+@@ -180,7 +198,7 @@ static char *get_xattr_data(const char *fname, const char *name, size_t *len_ptr
+ 		if (errno == ENOTSUP || no_missing_error)
+ 			return NULL;
+ 		rsyserr(FERROR_XFER, errno,
+-			"get_xattr_data: lgetxattr(\"%s\",\"%s\",0) failed",
++			"get_xattr_data: lgetxattr(%s,\"%s\",0) failed",
+ 			full_fname(fname), name);
+ 		return NULL;
+ 	}
+@@ -197,12 +215,12 @@ static char *get_xattr_data(const char *fname, const char *name, size_t *len_ptr
+ 		if (len != datum_len) {
+ 			if (len == (size_t)-1) {
+ 				rsyserr(FERROR_XFER, errno,
+-				    "get_xattr_data: lgetxattr(\"%s\",\"%s\",%ld)"
+-				    " failed", full_fname(fname), name, (long)datum_len);
++				    "get_xattr_data: lgetxattr(%s,\"%s\",%ld) failed",
++				    full_fname(fname), name, (long)datum_len);
+ 			} else {
+ 				rprintf(FERROR_XFER,
+-				    "get_xattr_data: lgetxattr(\"%s\",\"%s\",%ld)"
+-				    " returned %ld\n", full_fname(fname), name,
++				    "get_xattr_data: lgetxattr(%s,\"%s\",%ld) returned %ld\n",
++				    full_fname(fname), name,
+ 				    (long)datum_len, (long)len);
+ 			}
+ 			free(ptr);
+@@ -232,17 +250,18 @@ static int rsync_xal_get(const char *fname, item_list *xalp)
+ 		name_len = strlen(name) + 1;
+ 		list_len -= name_len;
+ 
++		if (saw_xattr_filter) {
++			if (name_is_excluded(name, NAME_IS_XATTR, ALL_FILTERS))
++				continue;
++		}
+ #ifdef HAVE_LINUX_XATTRS
+-		/* We always ignore the system namespace, and non-root
+-		 * ignores everything but the user namespace. */
+-		if (user_only ? !HAS_PREFIX(name, USER_PREFIX)
+-			      : HAS_PREFIX(name, SYSTEM_PREFIX))
++		/* Choose between ignoring the system namespace or (non-root) ignoring any non-user namespace. */
++		else if (user_only ? !HAS_PREFIX(name, USER_PREFIX) : HAS_PREFIX(name, SYSTEM_PREFIX))
+ 			continue;
+ #endif
+ 
+ 		/* No rsync.%FOO attributes are copied w/o 2 -X options. */
+-		if (name_len > RPRE_LEN && name[RPRE_LEN] == '%'
+-		 && HAS_PREFIX(name, RSYNC_PREFIX)) {
++		if (name_len > RPRE_LEN && name[RPRE_LEN] == '%' && HAS_PREFIX(name, RSYNC_PREFIX)) {
+ 			if ((am_sender && preserve_xattrs < 2)
+ 			 || (am_root < 0
+ 			  && (strcmp(name+RPRE_LEN+1, XSTAT_SUFFIX) == 0
+@@ -258,7 +277,7 @@ static int rsync_xal_get(const char *fname, item_list *xalp)
+ 		if (datum_len > MAX_FULL_DATUM) {
+ 			/* For large datums, we store a flag and a checksum. */
+ 			name_offset = 1 + MAX_DIGEST_LEN;
+-			sum_init(checksum_seed);
++			sum_init(-1, checksum_seed);
+ 			sum_update(ptr, datum_len);
+ 			free(ptr);
+ 
+@@ -335,11 +354,13 @@ int copy_xattrs(const char *source, const char *dest)
+ 		name_len = strlen(name) + 1;
+ 		list_len -= name_len;
+ 
++		if (saw_xattr_filter) {
++			if (name_is_excluded(name, NAME_IS_XATTR, ALL_FILTERS))
++				continue;
++		}
+ #ifdef HAVE_LINUX_XATTRS
+-		/* We always ignore the system namespace, and non-root
+-		 * ignores everything but the user namespace. */
+-		if (user_only ? !HAS_PREFIX(name, USER_PREFIX)
+-			      : HAS_PREFIX(name, SYSTEM_PREFIX))
++		/* Choose between ignoring the system namespace or (non-root) ignoring any non-user namespace. */
++		else if (user_only ? !HAS_PREFIX(name, USER_PREFIX) : HAS_PREFIX(name, SYSTEM_PREFIX))
+ 			continue;
+ #endif
+ 
+@@ -349,7 +370,7 @@ int copy_xattrs(const char *source, const char *dest)
+ 		if (sys_lsetxattr(dest, name, ptr, datum_len) < 0) {
+ 			int save_errno = errno ? errno : EINVAL;
+ 			rsyserr(FERROR_XFER, errno,
+-				"copy_xattrs: lsetxattr(\"%s\",\"%s\") failed",
++				"copy_xattrs: lsetxattr(%s,\"%s\") failed",
+ 				full_fname(dest), name);
+ 			errno = save_errno;
+ 			return -1;
+@@ -360,17 +381,58 @@ int copy_xattrs(const char *source, const char *dest)
+ 	return 0;
+ }
+ 
+-static int find_matching_xattr(item_list *xalp)
++static int64 xattr_lookup_hash(const item_list *xalp)
+ {
+-	size_t i, j;
+-	item_list *lst = rsync_xal_l.items;
++	const rsync_xa *rxas = xalp->items;
++	size_t i;
++	int64 key = hashlittle(&xalp->count, sizeof xalp->count);
+ 
+-	for (i = 0; i < rsync_xal_l.count; i++) {
+-		rsync_xa *rxas1 = lst[i].items;
+-		rsync_xa *rxas2 = xalp->items;
++	for (i = 0; i < xalp->count; i++) {
++		key += hashlittle(rxas[i].name, rxas[i].name_len);
++		if (rxas[i].datum_len > MAX_FULL_DATUM)
++			key += hashlittle(rxas[i].datum, MAX_DIGEST_LEN);
++		else
++			key += hashlittle(rxas[i].datum, rxas[i].datum_len);
++	}
++
++	if (key == 0) {
++		/* This is very unlikely, but we should never
++		 * return 0 as hashtable_find() doesn't like it. */
++		return 1;
++	}
++
++	return key;
++}
++
++static int find_matching_xattr(const item_list *xalp)
++{
++	const struct ht_int64_node *node;
++	const rsync_xa_list_ref *ref;
++	int64 key;
++
++	if (rsync_xal_h == NULL)
++		return -1;
++
++	key = xattr_lookup_hash(xalp);
++
++	node = hashtable_find(rsync_xal_h, key, 0);
++	if (node == NULL)
++		return -1;
++
++	if (node->data == NULL)
++		return -1;
++
++	for (ref = node->data; ref != NULL; ref = ref->next) {
++		const rsync_xa_list *ptr = rsync_xal_l.items;
++		const rsync_xa *rxas1;
++		const rsync_xa *rxas2 = xalp->items;
++		size_t j;
++
++		ptr += ref->ndx;
++		rxas1 = ptr->xa_items.items;
+ 
+ 		/* Wrong number of elements? */
+-		if (lst[i].count != xalp->count)
++		if (ptr->xa_items.count != xalp->count)
+ 			continue;
+ 		/* any elements different? */
+ 		for (j = 0; j < xalp->count; j++) {
+@@ -391,23 +453,61 @@ static int find_matching_xattr(item_list *xalp)
+ 		}
+ 		/* no differences found.  This is The One! */
+ 		if (j == xalp->count)
+-			return i;
++			return ref->ndx;
+ 	}
+ 
+ 	return -1;
+ }
+ 
+ /* Store *xalp on the end of rsync_xal_l */
+-static void rsync_xal_store(item_list *xalp)
++static int rsync_xal_store(item_list *xalp)
+ {
+-	item_list *new_lst = EXPAND_ITEM_LIST(&rsync_xal_l, item_list, RSYNC_XAL_LIST_INITIAL);
++	struct ht_int64_node *node;
++	int ndx = rsync_xal_l.count; /* pre-incremented count */
++	rsync_xa_list *new_list = EXPAND_ITEM_LIST(&rsync_xal_l, rsync_xa_list, RSYNC_XAL_LIST_INITIAL);
++	rsync_xa_list_ref *new_ref;
+ 	/* Since the following call starts a new list, we know it will hold the
+ 	 * entire initial-count, not just enough space for one new item. */
+-	*new_lst = empty_xattr;
+-	(void)EXPAND_ITEM_LIST(new_lst, rsync_xa, xalp->count);
+-	memcpy(new_lst->items, xalp->items, xalp->count * sizeof (rsync_xa));
+-	new_lst->count = xalp->count;
++	*new_list = empty_xa_list;
++	(void)EXPAND_ITEM_LIST(&new_list->xa_items, rsync_xa, xalp->count);
++	memcpy(new_list->xa_items.items, xalp->items, xalp->count * sizeof (rsync_xa));
++	new_list->xa_items.count = xalp->count;
+ 	xalp->count = 0;
++
++	new_list->ndx = ndx;
++	new_list->key = xattr_lookup_hash(&new_list->xa_items);
++
++	if (rsync_xal_h == NULL)
++		rsync_xal_h = hashtable_create(512, 1);
++	if (rsync_xal_h == NULL)
++		out_of_memory("rsync_xal_h hashtable_create()");
++
++	node = hashtable_find(rsync_xal_h, new_list->key, 1);
++	if (node == NULL)
++		out_of_memory("rsync_xal_h hashtable_find()");
++
++	new_ref = new0(rsync_xa_list_ref);
++	if (new_ref == NULL)
++		out_of_memory("new0(rsync_xa_list_ref)");
++
++	new_ref->ndx = ndx;
++
++	if (node->data != NULL) {
++		rsync_xa_list_ref *ref = node->data;
++
++		while (ref != NULL) {
++			if (ref->next != NULL) {
++				ref = ref->next;
++				continue;
++			}
++
++			ref->next = new_ref;
++			break;
++		}
++	} else
++		node->data = new_ref;
++
++	return ndx;
+ }
+ 
+ /* Send the make_xattr()-generated xattr list for this flist entry. */
+@@ -454,8 +554,7 @@ int send_xattr(int f, stat_x *sxp)
+ 			else
+ 				write_bigbuf(f, rxa->datum, rxa->datum_len);
+ 		}
+-		ndx = rsync_xal_l.count; /* pre-incremented count */
+-		rsync_xal_store(sxp->xattr); /* adds item to rsync_xal_l */
++		ndx = rsync_xal_store(sxp->xattr); /* adds item to rsync_xal_l */
+ 	}
+ 
+ 	return ndx;
+@@ -466,7 +565,8 @@ int send_xattr(int f, stat_x *sxp)
+  * need so that send_xattr_request() can tell the sender about them. */
+ int xattr_diff(struct file_struct *file, stat_x *sxp, int find_all)
+ {
+-	item_list *lst = rsync_xal_l.items;
++	const rsync_xa_list *glst = rsync_xal_l.items;
++	const item_list *lst;
+ 	rsync_xa *snd_rxa, *rec_rxa;
+ 	int snd_cnt, rec_cnt;
+ 	int cmp, same, xattrs_equal = 1;
+@@ -479,9 +579,10 @@ int xattr_diff(struct file_struct *file, stat_x *sxp, int find_all)
+ 		rec_cnt = 0;
+ 	}
+ 
+-	if (F_XATTR(file) >= 0)
+-		lst += F_XATTR(file);
+-	else
++	if (F_XATTR(file) >= 0) {
++		glst += F_XATTR(file);
++		lst = &glst->xa_items;
++	} else
+ 		lst = &empty_xattr;
+ 
+ 	snd_rxa = lst->items;
+@@ -540,11 +641,14 @@ int xattr_diff(struct file_struct *file, stat_x *sxp, int find_all)
+  * XSTATE_ABBREV states into XSTATE_DONE. */
+ void send_xattr_request(const char *fname, struct file_struct *file, int f_out)
+ {
+-	item_list *lst = rsync_xal_l.items;
++	const rsync_xa_list *glst = rsync_xal_l.items;
++	const item_list *lst;
+ 	int cnt, prior_req = 0;
+ 	rsync_xa *rxa;
+ 
+-	lst += F_XATTR(file);
++	glst += F_XATTR(file);
++	lst = &glst->xa_items;
++
+ 	for (rxa = lst->items, cnt = lst->count; cnt--; rxa++) {
+ 		if (rxa->datum_len <= MAX_FULL_DATUM)
+ 			continue;
+@@ -595,7 +699,8 @@ void send_xattr_request(const char *fname, struct file_struct *file, int f_out)
+  * stores it in place of its checksum. */
+ int recv_xattr_request(struct file_struct *file, int f_in)
+ {
+-	item_list *lst = rsync_xal_l.items;
++	const rsync_xa_list *glst = rsync_xal_l.items;
++	const item_list *lst;
+ 	char *old_datum, *name;
+ 	rsync_xa *rxa;
+ 	int rel_pos, cnt, num, got_xattr_data = 0;
+@@ -604,17 +709,40 @@ int recv_xattr_request(struct file_struct *file, int f_in)
+ 		rprintf(FERROR, "recv_xattr_request: internal data error!\n");
+ 		exit_cleanup(RERR_PROTOCOL);
+ 	}
+-	lst += F_XATTR(file);
++	glst += F_XATTR(file);
++	lst = &glst->xa_items;
+ 
+ 	cnt = lst->count;
+ 	rxa = lst->items;
+ 	num = 0;
+ 	while ((rel_pos = read_varint(f_in)) != 0) {
+ 		num += rel_pos;
+-		/* Note that the sender-related num values may not be in order on the receiver! */
+-		while (cnt && (am_sender ? rxa->num < num : rxa->num != num)) {
+-			rxa++;
+-			cnt--;
++		if (am_sender) {
++			/* The sender-related num values are only in order on the sender.
++			 * We use that order here to scan foward or backward as needed. */
++			if (rel_pos < 0) {
++				while (cnt < (int)lst->count && rxa->num > num) {
++					rxa--;
++					cnt++;
++				}
++			} else {
++				while (cnt > 1 && rxa->num < num) {
++					rxa++;
++					cnt--;
++				}
++			}
++		} else {
++			int j;
++			/* The receiving side has no known num order, so we just scan
++			 * forward (w/wrap) and hope that the next value is near by. */
++			for (j = lst->count; j > 1 && rxa->num != num; j--) {
++				if (--cnt)
++					rxa++;
++				else {
++					cnt = lst->count;
++					rxa = lst->items;
++				}
++			}
+ 		}
+ 		if (!cnt || rxa->num != num) {
+ 			rprintf(FERROR, "[%s] could not find xattr #%d for %s\n",
+@@ -689,7 +817,7 @@ void receive_xattr(int f, struct file_struct *file)
+ 		size_t dget_len = datum_len > MAX_FULL_DATUM ? 1 + MAX_DIGEST_LEN : datum_len;
+ 		size_t extra_len = MIGHT_NEED_RPRE ? RPRE_LEN : 0;
+ 		if ((dget_len + extra_len < dget_len)
+-		 || (dget_len + extra_len + name_len < dget_len))
++		 || (dget_len + extra_len + name_len < dget_len + extra_len))
+ 			overflow_exit("receive_xattr");
+ 		ptr = new_array(char, dget_len + extra_len + name_len);
+ 		if (!ptr)
+@@ -702,10 +830,17 @@ void receive_xattr(int f, struct file_struct *file)
+ 			*ptr = XSTATE_ABBREV;
+ 			read_buf(f, ptr + 1, MAX_DIGEST_LEN);
+ 		}
++
++		if (saw_xattr_filter) {
++			if (name_is_excluded(name, NAME_IS_XATTR, ALL_FILTERS)) {
++				free(ptr);
++				continue;
++			}
++		}
+ #ifdef HAVE_LINUX_XATTRS
+ 		/* Non-root can only save the user namespace. */
+ 		if (am_root <= 0 && !HAS_PREFIX(name, USER_PREFIX)) {
+-			if (!am_root) {
++			if (!am_root && !saw_xattr_filter) {
+ 				free(ptr);
+ 				continue;
+ 			}
+@@ -736,6 +871,7 @@ void receive_xattr(int f, struct file_struct *file)
+ 			free(ptr);
+ 			continue;
+ 		}
++
+ 		rxa = EXPAND_ITEM_LIST(&temp_xattr, rsync_xa, 1);
+ 		rxa->name = name;
+ 		rxa->datum = ptr;
+@@ -747,8 +883,7 @@ void receive_xattr(int f, struct file_struct *file)
+ 	if (need_sort && count > 1)
+ 		qsort(temp_xattr.items, count, sizeof (rsync_xa), rsync_xal_compare_names);
+ 
+-	ndx = rsync_xal_l.count; /* pre-incremented count */
+-	rsync_xal_store(&temp_xattr); /* adds item to rsync_xal_l */
++	ndx = rsync_xal_store(&temp_xattr); /* adds item to rsync_xal_l */
+ 
+ 	F_XATTR(file) = ndx;
+ }
+@@ -774,12 +909,47 @@ void cache_tmp_xattr(struct file_struct *file, stat_x *sxp)
+ void uncache_tmp_xattrs(void)
+ {
+ 	if (prior_xattr_count != (size_t)-1) {
+-		item_list *xattr_item = rsync_xal_l.items;
+-		item_list *xattr_start = xattr_item + prior_xattr_count;
+-		xattr_item += rsync_xal_l.count;
++		rsync_xa_list *xa_list_item = rsync_xal_l.items;
++		rsync_xa_list *xa_list_start = xa_list_item + prior_xattr_count;
++		xa_list_item += rsync_xal_l.count;
+ 		rsync_xal_l.count = prior_xattr_count;
+-		while (xattr_item-- > xattr_start)
+-			rsync_xal_free(xattr_item);
++		while (xa_list_item-- > xa_list_start) {
++			struct ht_int64_node *node;
++			rsync_xa_list_ref *ref;
++
++			rsync_xal_free(&xa_list_item->xa_items);
++
++			if (rsync_xal_h == NULL)
++				continue;
++
++			node = hashtable_find(rsync_xal_h, xa_list_item->key, 0);
++			if (node == NULL)
++				continue;
++
++			if (node->data == NULL)
++				continue;
++
++			ref = node->data;
++			if (xa_list_item->ndx == ref->ndx) {
++				/* xa_list_item is the first in the list. */
++				node->data = ref->next;
++				free(ref);
++				continue;
++			}
++
++			while (ref != NULL) {
++				if (ref->next == NULL) {
++					ref = NULL;
++					break;
++				}
++				if (xa_list_item->ndx == ref->next->ndx) {
++					ref->next = ref->next->next;
++					free(ref);
++					break;
++				}
++				ref = ref->next;
++			}
++		}
+ 		prior_xattr_count = (size_t)-1;
+ 	}
+ }
+@@ -821,7 +991,7 @@ static int rsync_xal_set(const char *fname, item_list *xalp,
+ 				goto still_abbrev;
+ 			}
+ 
+-			sum_init(checksum_seed);
++			sum_init(-1, checksum_seed);
+ 			sum_update(ptr, len);
+ 			sum_end(sum);
+ 			if (memcmp(sum, rxas[i].datum + 1, MAX_DIGEST_LEN) != 0) {
+@@ -833,7 +1003,7 @@ static int rsync_xal_set(const char *fname, item_list *xalp,
+ 				; /* Value is already set when identical */
+ 			else if (sys_lsetxattr(fname, name, ptr, len) < 0) {
+ 				rsyserr(FERROR_XFER, errno,
+-					"rsync_xal_set: lsetxattr(\"%s\",\"%s\") failed",
++					"rsync_xal_set: lsetxattr(%s,\"%s\") failed",
+ 					full_fname(fname), name);
+ 				ret = -1;
+ 			} else /* make sure caller sets mtime */
+@@ -854,7 +1024,7 @@ static int rsync_xal_set(const char *fname, item_list *xalp,
+ 
+ 		if (sys_lsetxattr(fname, name, rxas[i].datum, rxas[i].datum_len) < 0) {
+ 			rsyserr(FERROR_XFER, errno,
+-				"rsync_xal_set: lsetxattr(\"%s\",\"%s\") failed",
++				"rsync_xal_set: lsetxattr(%s,\"%s\") failed",
+ 				full_fname(fname), name);
+ 			ret = -1;
+ 		} else /* make sure caller sets mtime */
+@@ -866,15 +1036,16 @@ static int rsync_xal_set(const char *fname, item_list *xalp,
+ 		name_len = strlen(name) + 1;
+ 		list_len -= name_len;
+ 
++		if (saw_xattr_filter) {
++			if (name_is_excluded(name, NAME_IS_XATTR, ALL_FILTERS))
++				continue;
++		}
+ #ifdef HAVE_LINUX_XATTRS
+-		/* We always ignore the system namespace, and non-root
+-		 * ignores everything but the user namespace. */
+-		if (user_only ? !HAS_PREFIX(name, USER_PREFIX)
+-			      : HAS_PREFIX(name, SYSTEM_PREFIX))
++		/* Choose between ignoring the system namespace or (non-root) ignoring any non-user namespace. */
++		else if (user_only ? !HAS_PREFIX(name, USER_PREFIX) : HAS_PREFIX(name, SYSTEM_PREFIX))
+ 			continue;
+ #endif
+-		if (am_root < 0 && name_len > RPRE_LEN
+-		 && name[RPRE_LEN] == '%' && strcmp(name, XSTAT_ATTR) == 0)
++		if (am_root < 0 && name_len > RPRE_LEN && name[RPRE_LEN] == '%' && strcmp(name, XSTAT_ATTR) == 0)
+ 			continue;
+ 
+ 		for (i = 0; i < xalp->count; i++) {
+@@ -884,7 +1055,7 @@ static int rsync_xal_set(const char *fname, item_list *xalp,
+ 		if (i == xalp->count) {
+ 			if (sys_lremovexattr(fname, name) < 0) {
+ 				rsyserr(FERROR_XFER, errno,
+-					"rsync_xal_set: lremovexattr(\"%s\",\"%s\") failed",
++					"rsync_xal_set: lremovexattr(%s,\"%s\") failed",
+ 					full_fname(fname), name);
+ 				ret = -1;
+ 			} else /* make sure caller sets mtime */
+@@ -899,8 +1070,9 @@ static int rsync_xal_set(const char *fname, item_list *xalp,
+ int set_xattr(const char *fname, const struct file_struct *file,
+ 	      const char *fnamecmp, stat_x *sxp)
+ {
++	rsync_xa_list *glst = rsync_xal_l.items;
++	item_list *lst;
+ 	int ndx;
+-	item_list *lst = rsync_xal_l.items;
+ 
+ 	if (dry_run)
+ 		return 1; /* FIXME: --dry-run needs to compute this value */
+@@ -930,7 +1102,9 @@ int set_xattr(const char *fname, const struct file_struct *file,
+ #endif
+ 
+ 	ndx = F_XATTR(file);
+-	return rsync_xal_set(fname, lst + ndx, fnamecmp, sxp);
++	glst += ndx;
++	lst = &glst->xa_items;
++	return rsync_xal_set(fname, lst, fnamecmp, sxp);
+ }
+ 
+ #ifdef SUPPORT_ACLS
+@@ -946,7 +1120,7 @@ int set_xattr_acl(const char *fname, int is_access_acl, const char *buf, size_t
+ 	const char *name = is_access_acl ? XACC_ACL_ATTR : XDEF_ACL_ATTR;
+ 	if (sys_lsetxattr(fname, name, buf, buf_len) < 0) {
+ 		rsyserr(FERROR_XFER, errno,
+-			"set_xattr_acl: lsetxattr(\"%s\",\"%s\") failed",
++			"set_xattr_acl: lsetxattr(%s,\"%s\") failed",
+ 			full_fname(fname), name);
+ 		return -1;
+ 	}
