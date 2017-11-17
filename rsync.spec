@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.1.2
-Release  : 22
+Release  : 23
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.2.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.2.tar.gz
 Source1  : rsyncd.service
@@ -29,6 +29,10 @@ BuildRequires : pkg-config-dev
 BuildRequires : pkgconfig(zlib)
 BuildRequires : popt-dev
 Patch1: sync_to_master.patch
+Patch2: 0001-Handle-archaic-checksums-properly.patch
+Patch3: 0002-Don-t-forget-to-tweak-sum_update.patch
+Patch4: 0003-Only-allow-a-modern-checksum-method-for-passwords.patch
+Patch5: cve-2017-15994.nopatch
 
 %description
 Rsync is a fast and extraordinarily versatile file copying tool.  It can
@@ -69,13 +73,20 @@ doc components for the rsync package.
 %prep
 %setup -q -n rsync-3.1.2
 %patch1 -p1
+%patch2 -p1
+%patch3 -p1
+%patch4 -p1
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C
-export SOURCE_DATE_EPOCH=1510960320
+export SOURCE_DATE_EPOCH=1510961687
+export CFLAGS="$CFLAGS -fstack-protector-strong "
+export FCFLAGS="$CFLAGS -fstack-protector-strong "
+export FFLAGS="$CFLAGS -fstack-protector-strong "
+export CXXFLAGS="$CXXFLAGS -fstack-protector-strong "
 %reconfigure --disable-static
 make V=1  %{?_smp_mflags} make reconfigure && make V=1 %{?_smp_mflags}
 
@@ -87,7 +98,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1510960320
+export SOURCE_DATE_EPOCH=1510961687
 rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/usr/lib/systemd/system
