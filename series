@@ -3,3 +3,4 @@ sync_to_master.patch
 0002-Don-t-forget-to-tweak-sum_update.patch
 0003-Only-allow-a-modern-checksum-method-for-passwords.patch
 cve-2017-15994.nopatch
+cve-2017-16548.patch
