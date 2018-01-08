@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.1.2
-Release  : 28
+Release  : 30
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.2.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.2.tar.gz
 Source1  : rsyncd.service
@@ -35,8 +35,9 @@ Patch4: 0003-Only-allow-a-modern-checksum-method-for-passwords.patch
 Patch5: cve-2017-15994.nopatch
 Patch6: cve-2017-16548.patch
 Patch7: cve-2017-17433.patch
-Patch8: cve-2017-17434.patch
-Patch9: cve-2017-17434-1.patch
+Patch8: cve-2017-17433-1.patch
+Patch9: cve-2017-17434.patch
+Patch10: cve-2017-17434-1.patch
 
 %description
 Rsync is a fast and extraordinarily versatile file copying tool.  It can
@@ -84,13 +85,14 @@ doc components for the rsync package.
 %patch7 -p1
 %patch8 -p1
 %patch9 -p1
+%patch10 -p1
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C
-export SOURCE_DATE_EPOCH=1514411732
+export SOURCE_DATE_EPOCH=1515434279
 export CFLAGS="$CFLAGS -fstack-protector-strong "
 export FCFLAGS="$CFLAGS -fstack-protector-strong "
 export FFLAGS="$CFLAGS -fstack-protector-strong "
@@ -106,7 +108,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1514411732
+export SOURCE_DATE_EPOCH=1515434279
 rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/usr/lib/systemd/system
