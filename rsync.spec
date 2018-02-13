@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.1.3
-Release  : 34
+Release  : 35
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source1  : rsyncd.service
@@ -21,6 +21,7 @@ BuildRequires : acl-dev
 BuildRequires : attr-dev
 BuildRequires : pkgconfig(zlib)
 BuildRequires : popt-dev
+Patch1: cve-2017-16548.nopatch
 
 %description
 Rsync is a fast and extraordinarily versatile file copying tool.  It can
@@ -66,7 +67,7 @@ export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C
-export SOURCE_DATE_EPOCH=1518509404
+export SOURCE_DATE_EPOCH=1518558771
 export CFLAGS="$CFLAGS -fstack-protector-strong "
 export FCFLAGS="$CFLAGS -fstack-protector-strong "
 export FFLAGS="$CFLAGS -fstack-protector-strong "
@@ -82,7 +83,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1518509404
+export SOURCE_DATE_EPOCH=1518558771
 rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/usr/lib/systemd/system
