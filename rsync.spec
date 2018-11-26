@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.1.3
-Release  : 36
+Release  : 37
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source1  : rsyncd.service
@@ -14,9 +14,10 @@ Source99 : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz.asc
 Summary  : A fast, versatile, remote (and local) file-copying tool
 Group    : Development/Tools
 License  : GPL-3.0 GPL-3.0+ X11
-Requires: rsync-bin
-Requires: rsync-config
-Requires: rsync-doc
+Requires: rsync-bin = %{version}-%{release}
+Requires: rsync-license = %{version}-%{release}
+Requires: rsync-man = %{version}-%{release}
+Requires: rsync-services = %{version}-%{release}
 BuildRequires : acl-dev
 BuildRequires : attr-dev
 BuildRequires : pkgconfig(zlib)
@@ -37,26 +38,36 @@ improved copy command for everyday use.
 %package bin
 Summary: bin components for the rsync package.
 Group: Binaries
-Requires: rsync-config
+Requires: rsync-license = %{version}-%{release}
+Requires: rsync-man = %{version}-%{release}
+Requires: rsync-services = %{version}-%{release}
 
 %description bin
 bin components for the rsync package.
 
 
-%package config
-Summary: config components for the rsync package.
+%package license
+Summary: license components for the rsync package.
 Group: Default
 
-%description config
-config components for the rsync package.
+%description license
+license components for the rsync package.
 
 
-%package doc
-Summary: doc components for the rsync package.
-Group: Documentation
+%package man
+Summary: man components for the rsync package.
+Group: Default
 
-%description doc
-doc components for the rsync package.
+%description man
+man components for the rsync package.
+
+
+%package services
+Summary: services components for the rsync package.
+Group: Systemd services
+
+%description services
+services components for the rsync package.
 
 
 %prep
@@ -67,11 +78,11 @@ export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C
-export SOURCE_DATE_EPOCH=1518558771
-export CFLAGS="$CFLAGS -fstack-protector-strong "
-export FCFLAGS="$CFLAGS -fstack-protector-strong "
-export FFLAGS="$CFLAGS -fstack-protector-strong "
-export CXXFLAGS="$CXXFLAGS -fstack-protector-strong "
+export SOURCE_DATE_EPOCH=1543192814
+export CFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
+export FCFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
+export FFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
+export CXXFLAGS="$CXXFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
 %configure --disable-static
 make  %{?_smp_mflags} make reconfigure && make V=1 %{?_smp_mflags}
 
@@ -83,8 +94,11 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1518558771
+export SOURCE_DATE_EPOCH=1543192814
 rm -rf %{buildroot}
+mkdir -p %{buildroot}/usr/share/package-licenses/rsync
+cp COPYING %{buildroot}/usr/share/package-licenses/rsync/COPYING
+cp popt/COPYING %{buildroot}/usr/share/package-licenses/rsync/popt_COPYING
 %make_install
 mkdir -p %{buildroot}/usr/lib/systemd/system
 install -m 0644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/rsyncd.service
@@ -96,11 +110,16 @@ install -m 0644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/rsyncd.service
 %defattr(-,root,root,-)
 /usr/bin/rsync
 
-%files config
+%files license
+%defattr(0644,root,root,0755)
+/usr/share/package-licenses/rsync/COPYING
+/usr/share/package-licenses/rsync/popt_COPYING
+
+%files man
+%defattr(0644,root,root,0755)
+/usr/share/man/man1/rsync.1
+/usr/share/man/man5/rsyncd.conf.5
+
+%files services
 %defattr(-,root,root,-)
 /usr/lib/systemd/system/rsyncd.service
-
-%files doc
-%defattr(-,root,root,-)
-%doc /usr/share/man/man1/*
-%doc /usr/share/man/man5/*
