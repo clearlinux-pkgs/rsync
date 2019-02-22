@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.1.3
-Release  : 37
+Release  : 38
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source1  : rsyncd.service
@@ -78,12 +78,13 @@ export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C
-export SOURCE_DATE_EPOCH=1543192814
+export SOURCE_DATE_EPOCH=1550796159
+export LDFLAGS="${LDFLAGS} -fno-lto"
 export CFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
 export FCFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
 export FFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
 export CXXFLAGS="$CXXFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
-%configure --disable-static
+%configure --disable-static --without-included-zlib
 make  %{?_smp_mflags} make reconfigure && make V=1 %{?_smp_mflags}
 
 %check
@@ -94,7 +95,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1543192814
+export SOURCE_DATE_EPOCH=1550796159
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/rsync
 cp COPYING %{buildroot}/usr/share/package-licenses/rsync/COPYING
