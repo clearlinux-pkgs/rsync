@@ -37,7 +37,6 @@ Configure miss: attropen
 Configure miss: whether posix_fallocate is efficient
 Configure miss: whether chown() modifies symlinks
 Configure miss: whether to use included libpopt
-Configure miss: whether to use included zlib
 Configure miss: broken readdir
 Configure miss: _acl
 Configure miss: __acl
