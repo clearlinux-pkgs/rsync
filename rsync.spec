@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.1.3
-Release  : 39
+Release  : 40
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 Source1  : rsyncd.service
@@ -23,6 +23,10 @@ BuildRequires : attr-dev
 BuildRequires : pkgconfig(zlib)
 BuildRequires : popt-dev
 Patch1: cve-2017-16548.nopatch
+Patch2: CVE-2016-9840.patch
+Patch3: CVE-2016-9841.patch
+Patch4: CVE-2016-9842.patch
+Patch5: CVE-2016-9843.patch
 
 %description
 Rsync is a fast and extraordinarily versatile file copying tool.  It can
@@ -39,7 +43,6 @@ improved copy command for everyday use.
 Summary: bin components for the rsync package.
 Group: Binaries
 Requires: rsync-license = %{version}-%{release}
-Requires: rsync-man = %{version}-%{release}
 Requires: rsync-services = %{version}-%{release}
 
 %description bin
@@ -72,13 +75,19 @@ services components for the rsync package.
 
 %prep
 %setup -q -n rsync-3.1.3
+%patch2 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C
-export SOURCE_DATE_EPOCH=1543192814
+export SOURCE_DATE_EPOCH=1558022330
+export GCC_IGNORE_WERROR=1
+export LDFLAGS="${LDFLAGS} -fno-lto"
 export CFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
 export FCFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
 export FFLAGS="$CFLAGS -fstack-protector-strong -mzero-caller-saved-regs=used "
@@ -94,7 +103,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1543192814
+export SOURCE_DATE_EPOCH=1558022330
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/rsync
 cp COPYING %{buildroot}/usr/share/package-licenses/rsync/COPYING
