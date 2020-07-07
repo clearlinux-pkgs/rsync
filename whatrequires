@@ -1,3 +1,5 @@
 # This file contains recursive sources that require this package
 casync
 kubernetes
+linux-libc-headers
+tensorflow-addons

@@ -5,12 +5,12 @@
 # Source0 file verified with key 0x6C859FB14B96A8C5 (wayned@samba.org)
 #
 Name     : rsync
-Version  : 3.1.3
-Release  : 41
-URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
-Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
+Version  : 3.2.2
+Release  : 42
+URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.2.tar.gz
+Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.2.tar.gz
 Source1  : rsyncd.service
-Source2  : https://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz.asc
+Source2  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.2.tar.gz.asc
 Summary  : A fast, versatile, remote (and local) file-copying tool
 Group    : Development/Tools
 License  : GPL-3.0 GPL-3.0+ X11
@@ -20,13 +20,12 @@ Requires: rsync-man = %{version}-%{release}
 Requires: rsync-services = %{version}-%{release}
 BuildRequires : acl-dev
 BuildRequires : attr-dev
+BuildRequires : commonmark
+BuildRequires : lz4-dev
+BuildRequires : openssl-dev
 BuildRequires : pkgconfig(zlib)
 BuildRequires : popt-dev
-Patch1: cve-2017-16548.nopatch
-Patch2: CVE-2016-9840.patch
-Patch3: CVE-2016-9841.patch
-Patch4: CVE-2016-9842.patch
-Patch5: CVE-2016-9843.patch
+BuildRequires : zstd-dev
 
 %description
 Rsync is a fast and extraordinarily versatile file copying tool.  It can
@@ -74,25 +73,22 @@ services components for the rsync package.
 
 
 %prep
-%setup -q -n rsync-3.1.3
-cd %{_builddir}/rsync-3.1.3
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
-%patch5 -p1
+%setup -q -n rsync-3.2.2
+cd %{_builddir}/rsync-3.2.2
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C.UTF-8
-export SOURCE_DATE_EPOCH=1575592674
+export SOURCE_DATE_EPOCH=1594145543
 export GCC_IGNORE_WERROR=1
 export CFLAGS="$CFLAGS -fno-lto -fstack-protector-strong -mzero-caller-saved-regs=used "
-export FCFLAGS="$CFLAGS -fno-lto -fstack-protector-strong -mzero-caller-saved-regs=used "
-export FFLAGS="$CFLAGS -fno-lto -fstack-protector-strong -mzero-caller-saved-regs=used "
+export FCFLAGS="$FFLAGS -fno-lto -fstack-protector-strong -mzero-caller-saved-regs=used "
+export FFLAGS="$FFLAGS -fno-lto -fstack-protector-strong -mzero-caller-saved-regs=used "
 export CXXFLAGS="$CXXFLAGS -fno-lto -fstack-protector-strong -mzero-caller-saved-regs=used "
-%configure --disable-static
+%configure --disable-static --disable-lz4 \
+--disable-xxhash
 make  %{?_smp_mflags}  reconfigure && make V=1 %{?_smp_mflags}
 
 %check
@@ -103,11 +99,11 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1575592674
+export SOURCE_DATE_EPOCH=1594145543
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/rsync
-cp %{_builddir}/rsync-3.1.3/COPYING %{buildroot}/usr/share/package-licenses/rsync/8624bcdae55baeef00cd11d5dfcfa60f68710a02
-cp %{_builddir}/rsync-3.1.3/popt/COPYING %{buildroot}/usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb
+cp %{_builddir}/rsync-3.2.2/COPYING %{buildroot}/usr/share/package-licenses/rsync/4a7452fae3466a452718f9c3cfdf3f5f8525a6db
+cp %{_builddir}/rsync-3.2.2/popt/COPYING %{buildroot}/usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb
 %make_install
 mkdir -p %{buildroot}/usr/lib/systemd/system
 install -m 0644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/rsyncd.service
@@ -118,14 +114,16 @@ install -m 0644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/rsyncd.service
 %files bin
 %defattr(-,root,root,-)
 /usr/bin/rsync
+/usr/bin/rsync-ssl
 
 %files license
 %defattr(0644,root,root,0755)
+/usr/share/package-licenses/rsync/4a7452fae3466a452718f9c3cfdf3f5f8525a6db
 /usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb
-/usr/share/package-licenses/rsync/8624bcdae55baeef00cd11d5dfcfa60f68710a02
 
 %files man
 %defattr(0644,root,root,0755)
+/usr/share/man/man1/rsync-ssl.1
 /usr/share/man/man1/rsync.1
 /usr/share/man/man5/rsyncd.conf.5
 

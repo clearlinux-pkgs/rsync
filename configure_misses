@@ -22,12 +22,18 @@ Configure miss: sys/extattr.h
 Configure miss: popt/popt.h usability
 Configure miss: popt/popt.h presence
 Configure miss: popt/popt.h
+Configure miss: xxhash.h usability
+Configure miss: xxhash.h presence
+Configure miss: xxhash.h
 Configure miss: whether sys/types.h defines makedev
+Configure miss: whether to enable xxhash checksum support
+Configure miss: whether to enable LZ4 compression
 Configure miss: if makedev takes 3 args
 Configure miss: struct stat.st_mtimespec.tv_nsec
 Configure miss: library containing libiconv_open
 Configure miss: aclsort
 Configure miss: aclsort in -lsec
+Configure miss: getattrlist
 Configure miss: va_copy
 Configure miss: __va_copy
 Configure miss: locale_charset
@@ -67,12 +73,18 @@ Configure miss: sys/extattr.h
 Configure miss: popt/popt.h usability
 Configure miss: popt/popt.h presence
 Configure miss: popt/popt.h
+Configure miss: xxhash.h usability
+Configure miss: xxhash.h presence
+Configure miss: xxhash.h
 Configure miss: whether sys/types.h defines makedev
+Configure miss: whether to enable xxhash checksum support
+Configure miss: whether to enable LZ4 compression
 Configure miss: if makedev takes 3 args
 Configure miss: struct stat.st_mtimespec.tv_nsec
 Configure miss: library containing libiconv_open
 Configure miss: aclsort
 Configure miss: aclsort in -lsec
+Configure miss: getattrlist
 Configure miss: va_copy
 Configure miss: __va_copy
 Configure miss: locale_charset

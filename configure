@@ -1,1 +1,2 @@
-
+--disable-lz4
+--disable-xxhash
