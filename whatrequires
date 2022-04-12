@@ -1,5 +1,7 @@
 # This file contains recursive sources that require this package
 casync
 kubernetes
+kubernetes-migration-1.18
 linux-libc-headers
-tensorflow-addons
+llvm
+llvm12

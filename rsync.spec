@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.2.3
-Release  : 44
+Release  : 45
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.3.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.3.tar.gz
 Source1  : rsyncd.service
@@ -20,11 +20,11 @@ Requires: rsync-man = %{version}-%{release}
 Requires: rsync-services = %{version}-%{release}
 BuildRequires : acl-dev
 BuildRequires : attr-dev
-BuildRequires : commonmark
 BuildRequires : lz4-dev
 BuildRequires : openssl-dev
 BuildRequires : pkgconfig(zlib)
 BuildRequires : popt-dev
+BuildRequires : pypi-commonmark
 BuildRequires : zstd-dev
 
 %description
@@ -81,7 +81,7 @@ export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C.UTF-8
-export SOURCE_DATE_EPOCH=1596841290
+export SOURCE_DATE_EPOCH=1649733215
 export GCC_IGNORE_WERROR=1
 export CFLAGS="$CFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
 export FCFLAGS="$FFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
@@ -99,7 +99,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1596841290
+export SOURCE_DATE_EPOCH=1649733215
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/rsync
 cp %{_builddir}/rsync-3.2.3/COPYING %{buildroot}/usr/share/package-licenses/rsync/4a7452fae3466a452718f9c3cfdf3f5f8525a6db
