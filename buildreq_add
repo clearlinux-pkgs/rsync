@@ -2,5 +2,5 @@
 # picked up automatically. One name per line, no whitespace.
 acl-dev
 attr-dev
-commonmark
+pypi-commonmark
 popt-dev
