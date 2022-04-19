@@ -48,6 +48,12 @@ Configure miss: library containing libiconv_open
 Configure miss: library containing libiconv_open
 Configure miss: locale_charset
 Configure miss: locale_charset
+Configure miss: netgroup.h
+Configure miss: netgroup.h
+Configure miss: netgroup.h presence
+Configure miss: netgroup.h presence
+Configure miss: netgroup.h usability
+Configure miss: netgroup.h usability
 Configure miss: popt/popt.h
 Configure miss: popt/popt.h
 Configure miss: popt/popt.h presence
@@ -78,6 +84,8 @@ Configure miss: sys/mode.h usability
 Configure miss: sys/mode.h usability
 Configure miss: the group for user "nobody"
 Configure miss: the group for user "nobody"
+Configure miss: unsigned char
+Configure miss: unsigned char
 Configure miss: va_copy
 Configure miss: va_copy
 Configure miss: whether chown() modifies symlinks
@@ -90,6 +98,10 @@ Configure miss: whether to call shutdown on all sockets
 Configure miss: whether to call shutdown on all sockets
 Configure miss: whether to enable LZ4 compression
 Configure miss: whether to enable LZ4 compression
+Configure miss: whether to enable MD5 ASM optimizations
+Configure miss: whether to enable MD5 ASM optimizations
+Configure miss: whether to enable rolling-checksum ASM optimizations
+Configure miss: whether to enable rolling-checksum ASM optimizations
 Configure miss: whether to enable xxhash checksum support
 Configure miss: whether to enable xxhash checksum support
 Configure miss: whether to use included libpopt

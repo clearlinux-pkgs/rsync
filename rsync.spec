@@ -5,12 +5,12 @@
 # Source0 file verified with key 0x6C859FB14B96A8C5 (wayned@samba.org)
 #
 Name     : rsync
-Version  : 3.2.3
-Release  : 45
-URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.3.tar.gz
-Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.3.tar.gz
+Version  : 3.2.4
+Release  : 46
+URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.4.tar.gz
+Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.4.tar.gz
 Source1  : rsyncd.service
-Source2  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.3.tar.gz.asc
+Source2  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.4.tar.gz.asc
 Summary  : A fast, versatile, remote (and local) file-copying tool
 Group    : Development/Tools
 License  : GPL-3.0 GPL-3.0+ X11
@@ -73,15 +73,15 @@ services components for the rsync package.
 
 
 %prep
-%setup -q -n rsync-3.2.3
-cd %{_builddir}/rsync-3.2.3
+%setup -q -n rsync-3.2.4
+cd %{_builddir}/rsync-3.2.4
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C.UTF-8
-export SOURCE_DATE_EPOCH=1649733215
+export SOURCE_DATE_EPOCH=1650405956
 export GCC_IGNORE_WERROR=1
 export CFLAGS="$CFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
 export FCFLAGS="$FFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
@@ -99,11 +99,11 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1649733215
+export SOURCE_DATE_EPOCH=1650405956
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/rsync
-cp %{_builddir}/rsync-3.2.3/COPYING %{buildroot}/usr/share/package-licenses/rsync/4a7452fae3466a452718f9c3cfdf3f5f8525a6db
-cp %{_builddir}/rsync-3.2.3/popt/COPYING %{buildroot}/usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb
+cp %{_builddir}/rsync-3.2.4/COPYING %{buildroot}/usr/share/package-licenses/rsync/4e462074002131183d7e67bccc2356b3391597e0
+cp %{_builddir}/rsync-3.2.4/popt/COPYING %{buildroot}/usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb
 %make_install
 mkdir -p %{buildroot}/usr/lib/systemd/system
 install -m 0644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/rsyncd.service
@@ -118,7 +118,7 @@ install -m 0644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/rsyncd.service
 
 %files license
 %defattr(0644,root,root,0755)
-/usr/share/package-licenses/rsync/4a7452fae3466a452718f9c3cfdf3f5f8525a6db
+/usr/share/package-licenses/rsync/4e462074002131183d7e67bccc2356b3391597e0
 /usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb
 
 %files man
