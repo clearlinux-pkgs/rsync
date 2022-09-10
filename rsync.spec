@@ -5,12 +5,12 @@
 # Source0 file verified with key 0x6C859FB14B96A8C5 (wayned@samba.org)
 #
 Name     : rsync
-Version  : 3.2.5
-Release  : 47
-URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.5.tar.gz
-Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.5.tar.gz
+Version  : 3.2.6
+Release  : 48
+URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.6.tar.gz
+Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.6.tar.gz
 Source1  : rsyncd.service
-Source2  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.5.tar.gz.asc
+Source2  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.6.tar.gz.asc
 Summary  : A fast, versatile, remote (and local) file-copying tool
 Group    : Development/Tools
 License  : GPL-3.0 GPL-3.0+ X11
@@ -73,15 +73,15 @@ services components for the rsync package.
 
 
 %prep
-%setup -q -n rsync-3.2.5
-cd %{_builddir}/rsync-3.2.5
+%setup -q -n rsync-3.2.6
+cd %{_builddir}/rsync-3.2.6
 
 %build
 export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C.UTF-8
-export SOURCE_DATE_EPOCH=1660586877
+export SOURCE_DATE_EPOCH=1662844291
 export GCC_IGNORE_WERROR=1
 export CFLAGS="$CFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
 export FCFLAGS="$FFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
@@ -99,7 +99,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1660586877
+export SOURCE_DATE_EPOCH=1662844291
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/rsync
 cp %{_builddir}/rsync-%{version}/COPYING %{buildroot}/usr/share/package-licenses/rsync/4e462074002131183d7e67bccc2356b3391597e0

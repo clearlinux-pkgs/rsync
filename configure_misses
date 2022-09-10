@@ -16,76 +16,46 @@ Configure miss: aclsort in -lsec
 Configure miss: aclsort in -lsec
 Configure miss: attr/xattr.h
 Configure miss: attr/xattr.h
-Configure miss: attr/xattr.h presence
-Configure miss: attr/xattr.h presence
-Configure miss: attr/xattr.h usability
-Configure miss: attr/xattr.h usability
 Configure miss: attropen
 Configure miss: attropen
 Configure miss: broken largefile support
 Configure miss: broken largefile support
 Configure miss: broken readdir
 Configure miss: broken readdir
+Configure miss: bsd/string.h
+Configure miss: bsd/string.h
 Configure miss: compat.h
 Configure miss: compat.h
-Configure miss: compat.h presence
-Configure miss: compat.h presence
-Configure miss: compat.h usability
-Configure miss: compat.h usability
 Configure miss: extattr_get_link
 Configure miss: extattr_get_link
+Configure miss: g++ option to enable C++11 features
+Configure miss: g++ option to enable C++11 features
 Configure miss: getattrlist
 Configure miss: getattrlist
 Configure miss: if makedev takes 3 args
 Configure miss: if makedev takes 3 args
 Configure miss: libcharset.h
 Configure miss: libcharset.h
-Configure miss: libcharset.h presence
-Configure miss: libcharset.h presence
-Configure miss: libcharset.h usability
-Configure miss: libcharset.h usability
 Configure miss: library containing libiconv_open
 Configure miss: library containing libiconv_open
 Configure miss: locale_charset
 Configure miss: locale_charset
 Configure miss: netgroup.h
 Configure miss: netgroup.h
-Configure miss: netgroup.h presence
-Configure miss: netgroup.h presence
-Configure miss: netgroup.h usability
-Configure miss: netgroup.h usability
 Configure miss: popt/popt.h
 Configure miss: popt/popt.h
-Configure miss: popt/popt.h presence
-Configure miss: popt/popt.h presence
-Configure miss: popt/popt.h usability
-Configure miss: popt/popt.h usability
 Configure miss: setattrlist
 Configure miss: setattrlist
 Configure miss: struct stat.st_mtimespec.tv_nsec
 Configure miss: struct stat.st_mtimespec.tv_nsec
 Configure miss: sys/attr.h
 Configure miss: sys/attr.h
-Configure miss: sys/attr.h presence
-Configure miss: sys/attr.h presence
-Configure miss: sys/attr.h usability
-Configure miss: sys/attr.h usability
 Configure miss: sys/extattr.h
 Configure miss: sys/extattr.h
-Configure miss: sys/extattr.h presence
-Configure miss: sys/extattr.h presence
-Configure miss: sys/extattr.h usability
-Configure miss: sys/extattr.h usability
 Configure miss: sys/mode.h
 Configure miss: sys/mode.h
-Configure miss: sys/mode.h presence
-Configure miss: sys/mode.h presence
-Configure miss: sys/mode.h usability
-Configure miss: sys/mode.h usability
 Configure miss: the group for user "nobody"
 Configure miss: the group for user "nobody"
-Configure miss: unsigned char
-Configure miss: unsigned char
 Configure miss: va_copy
 Configure miss: va_copy
 Configure miss: whether chown() modifies symlinks
@@ -108,7 +78,3 @@ Configure miss: whether to use included libpopt
 Configure miss: whether to use included libpopt
 Configure miss: xxhash.h
 Configure miss: xxhash.h
-Configure miss: xxhash.h presence
-Configure miss: xxhash.h presence
-Configure miss: xxhash.h usability
-Configure miss: xxhash.h usability
