@@ -6,7 +6,7 @@
 #
 Name     : rsync
 Version  : 3.2.6
-Release  : 49
+Release  : 50
 URL      : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.6.tar.gz
 Source0  : https://rsync.samba.org/ftp/rsync/src/rsync-3.2.6.tar.gz
 Source1  : rsyncd.service
@@ -81,12 +81,12 @@ export http_proxy=http://127.0.0.1:9/
 export https_proxy=http://127.0.0.1:9/
 export no_proxy=localhost,127.0.0.1,0.0.0.0
 export LANG=C.UTF-8
-export SOURCE_DATE_EPOCH=1662844291
+export SOURCE_DATE_EPOCH=1664910834
 export GCC_IGNORE_WERROR=1
-export CFLAGS="$CFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
-export FCFLAGS="$FFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
-export FFLAGS="$FFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
-export CXXFLAGS="$CXXFLAGS -fno-lto -fstack-protector-strong -fzero-call-used-regs=used "
+export CFLAGS="$CFLAGS -fno-lto "
+export FCFLAGS="$FFLAGS -fno-lto "
+export FFLAGS="$FFLAGS -fno-lto "
+export CXXFLAGS="$CXXFLAGS -fno-lto "
 %configure --disable-static --disable-lz4 \
 --disable-xxhash
 make  %{?_smp_mflags}  reconfigure && make V=1 %{?_smp_mflags}
@@ -99,11 +99,11 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 make TEST_VERBOSE=1 test || :
 
 %install
-export SOURCE_DATE_EPOCH=1662844291
+export SOURCE_DATE_EPOCH=1664910834
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/package-licenses/rsync
-cp %{_builddir}/rsync-%{version}/COPYING %{buildroot}/usr/share/package-licenses/rsync/4e462074002131183d7e67bccc2356b3391597e0
-cp %{_builddir}/rsync-%{version}/popt/COPYING %{buildroot}/usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb
+cp %{_builddir}/rsync-%{version}/COPYING %{buildroot}/usr/share/package-licenses/rsync/4e462074002131183d7e67bccc2356b3391597e0 || :
+cp %{_builddir}/rsync-%{version}/popt/COPYING %{buildroot}/usr/share/package-licenses/rsync/61bb7a8ea669080cfc9e7dbf37079eae70b535fb || :
 %make_install
 mkdir -p %{buildroot}/usr/lib/systemd/system
 install -m 0644 %{SOURCE1} %{buildroot}/usr/lib/systemd/system/rsyncd.service
