@@ -4,5 +4,7 @@ kubernetes
 kubernetes-migration-1.18
 linux-libc-headers
 llvm
-llvm12
-llvm13
+llvm14
+llvm15
+llvm16
+sof-bin
